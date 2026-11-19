@@ -1,10 +1,7 @@
 import {
     type AutocompleteInteraction,
-    ChannelType,
     type ChatInputCommandInteraction,
     type Guild,
-    MessageFlags,
-    PermissionFlagsBits,
     SeparatorBuilder,
     SlashCommandBuilder,
 } from 'discord.js';
