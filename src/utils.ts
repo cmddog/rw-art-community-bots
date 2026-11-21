@@ -2,15 +2,19 @@ import type {
     AccentColor,
     Command,
     ContainerOptions,
+    GiveawayMessageData,
     PartialMessageOptions,
 } from './types.js';
 import { db } from './db/client.js';
 import { keyValue, pseudonyms } from './db/schema.js';
 import {
-    type ActionRowBuilder,
-    type ButtonBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
     ContainerBuilder,
     Guild,
+    MediaGalleryBuilder,
+    type MediaGalleryItemBuilder,
     MessageFlags,
     TextDisplayBuilder,
 } from 'discord.js';
@@ -125,4 +129,65 @@ export async function log(
 
 export function fireAndForget(promise: Promise<unknown>) {
     promise.catch(console.error);
+}
+
+export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
+    const container = new ContainerBuilder();
+
+    if (data.ended) container.setAccentColor(ACCENT_COLORS.error);
+    else if (data.started) container.setAccentColor(0xffc333);
+    else container.setAccentColor(ACCENT_COLORS.primary);
+
+    container.addTextDisplayComponents(
+        buildTextDisplay(
+            `Giveaway${data.ended ? ' Ended' : ''} ✦ ${data.title}`,
+        ),
+    );
+    if (data.description)
+        container.addTextDisplayComponents(buildTextDisplay(data.description));
+    if (data.imageUrls && data.imageUrls.length > 0)
+        container.addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+                data.imageUrls.map(
+                    (url) => (item: MediaGalleryItemBuilder) =>
+                        item.setURL(url),
+                ),
+            ),
+        );
+    container.addTextDisplayComponents(
+        buildTextDisplay(
+            `**Host**: <@${data.creatorId}> ⸺ Up to ${data.numberOfWinners} winners ⸺ ${data.ended ? `Ended <t:${data.endTime}:R>` : data.started ? `Ends <t:${data.endTime}:R>` : `**Duration**: ${data.duration}`}`,
+        ),
+    );
+    if (data.started)
+        container.addActionRowComponents(
+            new ActionRowBuilder<ButtonBuilder>().setComponents(
+                ...(data.ended
+                    ? []
+                    : [
+                          new ButtonBuilder()
+                              .setCustomId(`giveaway:${data.uuid}:enter`)
+                              .setEmoji('gift')
+                              .setStyle(ButtonStyle.Premium)
+                              .setLabel('Enter'),
+                      ]),
+                new ButtonBuilder()
+                    .setStyle(ButtonStyle.Secondary)
+                    .setLabel(`Participants: ${data.participants}`)
+                    .setDisabled(),
+            ),
+        );
+    container.addTextDisplayComponents(
+        buildTextDisplay(`-# *UUID: ${data.uuid}*`),
+    );
+    if (data.ended)
+        container
+            .addSeparatorComponents()
+            .addTextDisplayComponents(
+                buildTextDisplay(
+                    `**Winners: ${data.winners.map((id) => `<@${id}>`).join(' ')}**`,
+                ),
+            );
+
+    return container;
 }
