@@ -14,18 +14,18 @@ declare module 'discord.js' {
     }
 }
 
-interface Command {
+type Command = {
     data: SlashCommandBuilder;
     execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
     autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
-}
+};
 
 export type AccentColor = 'error' | 'primary';
 
-interface ContainerOptions {
+type ContainerOptions = {
     text?: string;
     color?: AccentColor;
-}
+};
 
 type PartialMessageOptions = Pick<
     InteractionReplyOptions &
@@ -33,3 +33,32 @@ type PartialMessageOptions = Pick<
         MessageCreateOptions,
     'components' | 'flags'
 >;
+
+type GiveawayMessageBase = {
+    title: string;
+    description: string | null;
+    imageUrls: string[] | null;
+    creatorId: string;
+    numberOfWinners: number;
+    uuid: string;
+};
+
+export type GiveawayMessageData = GiveawayMessageBase &
+    (
+        | {
+              started: false;
+              ended: false;
+              duration: number;
+          }
+        | ({
+              started: true;
+              endTime: number;
+              entries: number;
+              participants: number;
+          } & (
+              | {
+                    ended: false;
+                }
+              | { ended: true; winners: string[] }
+          ))
+    );

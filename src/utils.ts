@@ -2,16 +2,21 @@ import type {
     AccentColor,
     Command,
     ContainerOptions,
+    GiveawayMessageData,
     PartialMessageOptions,
 } from './types.js';
 import { db } from './db/client.js';
 import { keyValue, pseudonyms } from './db/schema.js';
 import {
-    type ActionRowBuilder,
-    type ButtonBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
     ContainerBuilder,
     Guild,
+    MediaGalleryBuilder,
+    type MediaGalleryItemBuilder,
     MessageFlags,
+    SectionBuilder,
     TextDisplayBuilder,
 } from 'discord.js';
 import { eq } from 'drizzle-orm';
@@ -125,4 +130,80 @@ export async function log(
 
 export function fireAndForget(promise: Promise<unknown>) {
     promise.catch(console.error);
+}
+
+export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
+    const container = new ContainerBuilder();
+
+    if (data.ended) container.setAccentColor(ACCENT_COLORS.error);
+    else container.setAccentColor(0xce8100);
+
+    const title = `## Giveaway${data.ended ? ' Ended' : ''} ✦ ${data.title}`;
+    if (data.started)
+        container.addTextDisplayComponents(buildTextDisplay(title));
+    else
+        container.addSectionComponents(
+            new SectionBuilder()
+                .addTextDisplayComponents(buildTextDisplay(title))
+                .setButtonAccessory(
+                    new ButtonBuilder()
+                        .setCustomId(`giveaway:${data.uuid}:start`)
+                        .setLabel('Start')
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji({ name: '📢' }),
+                ),
+        );
+
+    if (data.description)
+        container.addTextDisplayComponents(buildTextDisplay(data.description));
+
+    if (data.imageUrls && data.imageUrls.length > 0)
+        container.addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+                data.imageUrls.map(
+                    (url) => (item: MediaGalleryItemBuilder) =>
+                        item.setURL(url),
+                ),
+            ),
+        );
+
+    container.addTextDisplayComponents(
+        buildTextDisplay(
+            `**Host**: <@${data.creatorId}> ⸺ Up to **${data.numberOfWinners}** winner${data.numberOfWinners > 1 ? 's' : ''} ⸺ ${data.ended ? `Ended <t:${data.endTime}:R>` : data.started ? `Ends <t:${data.endTime}:R>` : `**Duration**: ${data.duration} day${data.duration > 1 ? 's' : ''}`}`,
+        ),
+    );
+
+    if (data.started)
+        container.addActionRowComponents(
+            new ActionRowBuilder<ButtonBuilder>().setComponents(
+                ...(data.ended
+                    ? []
+                    : [
+                          new ButtonBuilder()
+                              .setCustomId(`giveaway:${data.uuid}:enter`)
+                              .setEmoji({ name: '🎁' })
+                              .setStyle(ButtonStyle.Primary)
+                              .setLabel('Enter'),
+                      ]),
+                new ButtonBuilder()
+                    .setStyle(ButtonStyle.Secondary)
+                    .setLabel(`Participants: ${data.participants}`)
+                    .setDisabled(),
+            ),
+        );
+
+    if (data.ended)
+        container
+            .addSeparatorComponents()
+            .addTextDisplayComponents(
+                buildTextDisplay(
+                    `**Winners: ${data.winners.map((id) => `<@${id}>`).join(' ')}**`,
+                ),
+            );
+
+    container.addTextDisplayComponents(
+        buildTextDisplay(`-# *UUID: ${data.uuid}*`),
+    );
+
+    return container;
 }

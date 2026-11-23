@@ -11,19 +11,21 @@ import { handleStart } from './handleStart.js';
 import { handleEdit } from './handleEdit.js';
 import { handleDelete } from './handleDelete.js';
 import { handleList } from './handleList.js';
-import { triggerAutocomplete } from '../triggerAutocomplete/handleSharedAutocomplete.js';
+import { db } from '../../db/client.js';
+import { and, eq, like, or } from 'drizzle-orm';
+import { giveaways } from '../../db/schema.js';
 
 const titleOption = new SlashCommandStringOption()
     .setName('title')
     .setDescription('Title of this giveaway')
-    .setMinLength(3)
+    .setMinLength(1)
     .setMaxLength(20);
 
 const numberOfWinnersOption = new SlashCommandIntegerOption()
     .setName('number-of-winners')
     .setDescription('The number of people that can win this giveaway')
-    .setMinValue(0)
-    .setMaxValue(100);
+    .setMinValue(1)
+    .setMaxValue(99);
 
 const durationOption = new SlashCommandIntegerOption()
     .setName('duration')
@@ -34,15 +36,15 @@ const durationOption = new SlashCommandIntegerOption()
         { name: '3 days', value: 3 },
     );
 
-const imageOption = new SlashCommandAttachmentOption()
-    .setName('image')
-    .setDescription('An image to be attached below the description');
-
 const descriptionOption = new SlashCommandStringOption()
     .setName('description')
     .setDescription('Description for this giveaway')
     .setMinLength(3)
-    .setMaxLength(250);
+    .setMaxLength(1000);
+
+const imageOption = new SlashCommandAttachmentOption()
+    .setName('image')
+    .setDescription('An image to be attached below the description');
 
 export const data = new SlashCommandBuilder()
     .setName('giveaway')
@@ -51,10 +53,12 @@ export const data = new SlashCommandBuilder()
     .addSubcommand((s) =>
         s
             .setName('create')
-            .setDescription('Creates a giveaway. Does not start it immediately')
-            .addStringOption(titleOption.setRequired(true))
-            .addIntegerOption(durationOption.setRequired(true))
-            .addIntegerOption(numberOfWinnersOption.setRequired(true))
+            .setDescription(
+                "Creates a giveaway. Opens a modal if run without the first 3 arguments. Doesn't start the giveaway",
+            )
+            .addStringOption(titleOption)
+            .addIntegerOption(durationOption)
+            .addIntegerOption(numberOfWinnersOption)
             .addStringOption(descriptionOption)
             .addAttachmentOption(imageOption),
     )
@@ -161,5 +165,18 @@ export async function execute(
 export async function autocomplete(
     interaction: AutocompleteInteraction,
 ): Promise<unknown> {
-    return null;
+    const focused = interaction.options.getFocused();
+    const userId = interaction.user.id;
+    const results = await db.query.giveaways.findMany({
+        where: and(
+            or(
+                like(giveaways.uuid, `%${focused}%`),
+                like(giveaways.title, `%${focused}%`),
+            ),
+            eq(giveaways.creatorId, userId),
+        ),
+    });
+    return interaction.respond(
+        results.map((r) => ({ name: r.title, value: r.uuid })).slice(0, 25),
+    );
 }
