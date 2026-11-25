@@ -58,3 +58,7 @@ export const giveawayParticipants = sqliteTable('giveaway_participants', {
         }),
     userId: text('user_id').notNull(),
 });
+
+export const giveawayPingRoles = sqliteTable('giveaway_ping_roles', {
+    roleId: text().primaryKey(),
+});

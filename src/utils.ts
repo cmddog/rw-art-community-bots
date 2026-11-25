@@ -138,7 +138,10 @@ export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
     if (data.ended) container.setAccentColor(ACCENT_COLORS.error);
     else container.setAccentColor(0xce8100);
 
-    const title = `## Giveaway${data.ended ? ' Ended' : ''} ✦ ${data.title}`;
+    const title =
+        data.started && data.pingRole && !data.ended
+            ? `## <@${data.pingRole.id}> ✦ ${data.title}`
+            : `## Giveaway${data.ended ? ' Ended' : ''} ✦ ${data.title}`;
     if (data.started)
         container.addTextDisplayComponents(buildTextDisplay(title));
     else
@@ -187,7 +190,7 @@ export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
                       ]),
                 new ButtonBuilder()
                     .setStyle(ButtonStyle.Secondary)
-                    .setLabel(`Participants: ${data.participants}`)
+                    .setLabel(`Entries: ${data.entries}`)
                     .setDisabled(),
             ),
         );

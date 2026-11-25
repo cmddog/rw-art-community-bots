@@ -1,11 +1,45 @@
-import { Events, type Interaction, MessageFlags } from 'discord.js';
+import {
+    ButtonInteraction,
+    Events,
+    type Interaction,
+    MessageFlags,
+} from 'discord.js';
 import { containerDisplay, isAutocompleteCommand } from '../utils.js';
+import { handleStart } from '../commands/giveaway/handleStart.js';
 
 export const name = Events.InteractionCreate;
 
 export async function execute(interaction: Interaction) {
-    if (!interaction.isChatInputCommand() && !interaction.isAutocomplete())
+    if (
+        !interaction.isChatInputCommand() &&
+        !interaction.isAutocomplete() &&
+        !interaction.isButton()
+    )
         return;
+
+    if (interaction.isButton()) {
+        if (interaction.customId.startsWith('giveaway')) {
+            try {
+                await handleGiveawayButton(interaction);
+            } catch (error) {
+                console.error(error);
+                const errorResponse = containerDisplay(
+                    {
+                        text: 'There was an error while handling this button.',
+                        color: 'error',
+                    },
+                    MessageFlags.Ephemeral,
+                );
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp(errorResponse);
+                } else {
+                    await interaction.reply(errorResponse);
+                }
+            }
+            return;
+        } else return;
+    }
+
     const command = interaction.client.commands.get(interaction.commandName);
 
     if (!command) {
@@ -41,10 +75,28 @@ export async function execute(interaction: Interaction) {
                 console.error(
                     `Missing autocomplete handler for ${interaction.commandName}`,
                 );
-                interaction.respond([]);
+                await interaction.respond([]);
             }
         } catch (error) {
             console.error(error);
         }
+    }
+}
+
+async function handleGiveawayButton(interaction: ButtonInteraction) {
+    const [, uuid, action] = interaction.customId.split(':');
+    if (!uuid || !action) throw new Error('Invalid customId');
+
+    switch (action) {
+        case 'start': {
+            return handleStart(interaction);
+        }
+        default:
+            return interaction.reply(
+                containerDisplay(
+                    { text: 'Unknown action', color: 'error' },
+                    MessageFlags.Ephemeral,
+                ),
+            );
     }
 }

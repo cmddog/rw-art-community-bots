@@ -1,4 +1,5 @@
 import {
+    type Attachment,
     type ChatInputCommandInteraction,
     FileUploadBuilder,
     LabelBuilder,
@@ -19,16 +20,24 @@ import {
     giveawayContainer,
 } from '../../utils.js';
 
+type GiveawayInput = {
+    title: string;
+    duration: number;
+    numberOfWinners: number;
+    description: string | null;
+    attachments: Attachment[] | null;
+};
+
 export async function handleCreate(
     interaction: ChatInputCommandInteraction,
 ): Promise<unknown> {
-    let title = interaction.options.getString('title');
-    let duration = interaction.options.getInteger('duration');
-    let numberOfWinners = interaction.options.getInteger('number-of-winners');
-    let description =
+    const optionTitle = interaction.options.getString('title');
+    const optionDuration = interaction.options.getInteger('duration');
+    const optionNumberOfWinners =
+        interaction.options.getInteger('number-of-winners');
+    const optionDescription =
         interaction.options.getString('description')?.trim() || null;
-    const image = interaction.options.getAttachment('image');
-    let attachments = image ? [image] : null;
+    const optionImage = interaction.options.getAttachment('image');
 
     const creatorId = interaction.user.id;
     const uuid = randomUUIDv7();
@@ -36,6 +45,8 @@ export async function handleCreate(
     const deferFlags = {
         flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
     };
+
+    let input: GiveawayInput;
     let replyInteraction: ChatInputCommandInteraction | ModalSubmitInteraction =
         interaction;
 
@@ -44,11 +55,19 @@ export async function handleCreate(
         color: 'primary',
     });
 
-    if (title && duration && numberOfWinners) {
+    if (optionTitle && optionDuration && optionNumberOfWinners) {
         await interaction.deferReply(deferFlags);
+        input = {
+            title: optionTitle,
+            duration: optionDuration,
+            numberOfWinners: optionNumberOfWinners,
+            description: optionDescription,
+            attachments: optionImage ? [optionImage] : null,
+        };
     } else {
+        const modalId = `giveaway-modal:${uuid}`;
         const modal = new ModalBuilder()
-            .setCustomId(uuid)
+            .setCustomId(modalId)
             .setTitle('Create Giveaway')
             .addLabelComponents(
                 new LabelBuilder()
@@ -138,21 +157,12 @@ export async function handleCreate(
         try {
             const modalInteraction = await interaction.awaitModalSubmit({
                 time: 300_000,
+                filter: (i) =>
+                    i.customId === modalId && i.user.id === interaction.user.id,
             });
 
-            title = modalInteraction.fields.getTextInputValue('title');
-            duration =
-                +modalInteraction.fields.getStringSelectValues('duration')[0]!;
-            numberOfWinners =
+            const numberOfWinners =
                 +modalInteraction.fields.getTextInputValue('numberOfWinners');
-            description =
-                modalInteraction.fields
-                    .getTextInputValue('description')
-                    .trim() || null;
-            attachments =
-                modalInteraction.fields
-                    .getUploadedFiles('images')
-                    ?.map((a) => a) ?? null;
 
             if (isNaN(numberOfWinners) || numberOfWinners < 1)
                 return modalInteraction.reply(
@@ -167,47 +177,62 @@ export async function handleCreate(
 
             await modalInteraction.deferReply(deferFlags);
             replyInteraction = modalInteraction;
+            input = {
+                title: modalInteraction.fields.getTextInputValue('title'),
+                duration:
+                    +modalInteraction.fields.getStringSelectValues(
+                        'duration',
+                    )[0]!,
+                numberOfWinners,
+                description:
+                    modalInteraction.fields
+                        .getTextInputValue('description')
+                        .trim() || null,
+                attachments:
+                    modalInteraction.fields
+                        .getUploadedFiles('images')
+                        ?.map((a) => a) ?? null,
+            };
         } catch {
             return;
         }
     }
 
     if (
-        attachments &&
-        attachments.some((a) => !a.contentType?.startsWith('image/'))
+        input.attachments &&
+        input.attachments.some((a) => !a.contentType?.startsWith('image/'))
     ) {
-        console.log(`3: ${description}`);
         return replyInteraction.editReply(
             containerDisplay({
-                text: `**Only images are allowed as attachments.**\nIf you'd like to copy them, here are the title and description you entered:\n> ## ${title}\n> ${description ?? '[ no description ]'}`,
+                text: `**Only images are allowed as attachments.**\nIf you'd like to copy them, here are the title and description you entered:\n> ## ${input.title}\n> ${input.description ?? '[ no description ]'}`,
                 color: 'error',
             }),
         );
     }
 
-    const attachmentURLs = attachments ? attachments?.map((a) => a.url) : null;
+    const attachmentURLs = input.attachments?.map((a) => a.url) ?? null;
 
     await db.insert(giveaways).values({
         uuid,
-        title,
-        duration,
-        numberOfWinners,
-        description: description,
+        title: input.title,
+        duration: input.duration,
+        numberOfWinners: input.numberOfWinners,
+        description: input.description,
         imageUrls: attachmentURLs?.join('\n'),
         creatorId,
         creationTime: Date.now(),
     });
 
     const giveaway = giveawayContainer({
-        title,
-        description,
+        title: input.title,
+        description: input.description,
         imageUrls: attachmentURLs,
         creatorId,
-        numberOfWinners,
+        numberOfWinners: input.numberOfWinners,
         uuid,
         started: false,
         ended: false,
-        duration,
+        duration: input.duration,
     });
 
     return replyInteraction.editReply({

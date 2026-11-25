@@ -75,12 +75,6 @@ export const data = new SlashCommandBuilder()
                     .setDescription('ID of the giveaway to start')
                     .setAutocomplete(true)
                     .setRequired(true),
-            )
-            .addRoleOption((o) =>
-                o
-                    .setName('ping-role')
-                    .setDescription('The role to ping with the announcement')
-                    .setRequired(true),
             ),
     )
     // ⎯⎯⎯⎯⎯ EDIT ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯ EDIT ⎯⎯⎯⎯⎯

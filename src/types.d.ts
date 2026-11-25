@@ -1,10 +1,12 @@
 import {
+    APIRole,
     type AutocompleteInteraction,
     type ChatInputCommandInteraction,
     Collection,
     type InteractionEditReplyOptions,
     type InteractionReplyOptions,
     type MessageCreateOptions,
+    type Role,
     SlashCommandBuilder,
 } from 'discord.js';
 
@@ -54,7 +56,7 @@ export type GiveawayMessageData = GiveawayMessageBase &
               started: true;
               endTime: number;
               entries: number;
-              participants: number;
+              pingRole: APIRole | Role | null;
           } & (
               | {
                     ended: false;
