@@ -54,6 +54,7 @@ export type GiveawayMessageData = GiveawayMessageBase &
           }
         | ({
               started: true;
+              /** Milliseconds since epoch (`Date.now()`), not seconds. */
               endTime: number;
               entries: number;
               pingRole: APIRole | Role | null;

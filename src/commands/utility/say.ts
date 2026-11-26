@@ -17,6 +17,7 @@ import {
     containerDisplay,
     fireAndForget,
     log,
+    verifyChannelSendPermission,
 } from '../../utils.js';
 import type { AccentColor } from '../../types.js';
 
@@ -82,21 +83,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const color = interaction.options.getString('color') as
         AccentColor | undefined;
 
-    if (
-        !channel
-            .permissionsFor(interaction.client.user)
-            ?.has(PermissionFlagsBits.SendMessages)
-    ) {
-        return interaction.reply(
-            containerDisplay(
-                {
-                    text: `I don't have permission to send messages in ${channel}`,
-                    color: 'error',
-                },
-                MessageFlags.Ephemeral,
-            ),
-        );
-    }
+    if (!(await verifyChannelSendPermission(interaction, channel))) return;
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 

@@ -11,12 +11,16 @@ import {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
+    type ChatInputCommandInteraction,
     ContainerBuilder,
     Guild,
+    type GuildTextBasedChannel,
     MediaGalleryBuilder,
     type MediaGalleryItemBuilder,
     MessageFlags,
+    PermissionFlagsBits,
     SectionBuilder,
+    type TextChannel,
     TextDisplayBuilder,
 } from 'discord.js';
 import { eq } from 'drizzle-orm';
@@ -140,7 +144,7 @@ export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
 
     const title =
         data.started && data.pingRole && !data.ended
-            ? `## <@${data.pingRole.id}> ✦ ${data.title}`
+            ? `## <@&${data.pingRole.id}> ✦ ${data.title}`
             : `## Giveaway${data.ended ? ' Ended' : ''} ✦ ${data.title}`;
     if (data.started)
         container.addTextDisplayComponents(buildTextDisplay(title));
@@ -172,7 +176,7 @@ export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
 
     container.addTextDisplayComponents(
         buildTextDisplay(
-            `**Host**: <@${data.creatorId}> ⸺ Up to **${data.numberOfWinners}** winner${data.numberOfWinners > 1 ? 's' : ''} ⸺ ${data.ended ? `Ended <t:${data.endTime}:R>` : data.started ? `Ends <t:${data.endTime}:R>` : `**Duration**: ${data.duration} day${data.duration > 1 ? 's' : ''}`}`,
+            `**Host**: <@${data.creatorId}> ⸺ Up to **${data.numberOfWinners}** winner${data.numberOfWinners > 1 ? 's' : ''} ⸺ ${data.ended ? `Ended <t:${Math.floor(data.endTime / 1000)}:R>` : data.started ? `Ends <t:${Math.floor(data.endTime / 1000)}:R>` : `**Duration**: ${data.duration} day${data.duration > 1 ? 's' : ''}`}`,
         ),
     );
 
@@ -189,6 +193,7 @@ export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
                               .setLabel('Enter'),
                       ]),
                 new ButtonBuilder()
+                    .setCustomId(`giveaway:${data.uuid}:entries`)
                     .setStyle(ButtonStyle.Secondary)
                     .setLabel(`Entries: ${data.entries}`)
                     .setDisabled(),
@@ -209,4 +214,27 @@ export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
     );
 
     return container;
+}
+
+export async function verifyChannelSendPermission(
+    interaction: ChatInputCommandInteraction,
+    channel: GuildTextBasedChannel | TextChannel,
+) {
+    if (
+        !channel
+            .permissionsFor(interaction.client.user)
+            ?.has(PermissionFlagsBits.SendMessages)
+    ) {
+        await interaction.reply(
+            containerDisplay(
+                {
+                    text: `I don't have permission to send messages in ${channel}`,
+                    color: 'error',
+                },
+                MessageFlags.Ephemeral,
+            ),
+        );
+        return false;
+    }
+    return true;
 }

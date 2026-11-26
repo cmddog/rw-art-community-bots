@@ -2,12 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="84849d04-5725-43fc-9b19-7093f7314254" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/drizzle/meta/_journal.json" beforeDir="false" afterPath="$PROJECT_DIR$/drizzle/meta/_journal.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/commands/giveaway/giveaway.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/commands/giveaway/giveaway.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/commands/giveaway/handleCreate.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/commands/giveaway/handleCreate.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/commands/giveaway-mod/giveaway-mod.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/commands/giveaway/handleStart.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/commands/giveaway/handleStart.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/db/schema.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/db/schema.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/events/interactionCreate.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/events/interactionCreate.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/commands/trigger-mod/handleSetUpdateChannel.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/commands/trigger-mod/handleSetUpdateChannel.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/commands/utility/say.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/commands/utility/say.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/commands/utility/set-logging-channel.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/commands/utility/set-logging-channel.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils.ts" afterDir="false" />
     </list>
@@ -21,61 +21,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0000000053790554" />
-      <entry key="MS500" value="1.0221891774772411" />
-      <entry key="S2" value="1.3859537822160983" />
-      <entry key="S5" value="1.683622166554603" />
-      <entry key="S10" value="1.8648699981983592" />
-      <entry key="S30" value="2.9208676072376063" />
-      <entry key="S60" value="4.26145794065684" />
-      <entry key="M2" value="5.710090997348154" />
-      <entry key="M5" value="13.120707025125197" />
-      <entry key="M10" value="38.29010049763077" />
-      <entry key="M15" value="63.18288526779474" />
-      <entry key="M30" value="116.81897574156726" />
-      <entry key="H1" value="195.73991727795922" />
-      <entry key="H2" value="312.2900840736929" />
-      <entry key="H4" value="441.85913145206916" />
-      <entry key="D1" value="954.4443563705037" />
-      <entry key="W1" value="1590.384605071154" />
+      <entry key="MS100" value="1.0000087638729476" />
+      <entry key="MS500" value="1.0974461199832786" />
+      <entry key="S2" value="1.6429624774327647" />
+      <entry key="S5" value="2.1641128056218646" />
+      <entry key="S10" value="2.5107031864538722" />
+      <entry key="S30" value="3.4451113495483145" />
+      <entry key="S60" value="4.757765751260926" />
+      <entry key="M2" value="7.139834975132172" />
+      <entry key="M5" value="14.678731851856078" />
+      <entry key="M10" value="26.24070830940019" />
+      <entry key="M15" value="39.939201252423274" />
+      <entry key="M30" value="84.83643327627829" />
+      <entry key="H1" value="144.82935031493287" />
+      <entry key="H2" value="196.27528014655005" />
+      <entry key="H4" value="239.47831876973396" />
+      <entry key="D1" value="766.5978593075112" />
+      <entry key="W1" value="1721.2391781260496" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="1.3192374194614004E-171" />
-      <entry key="MS500" value="6.669059502288131E-35" />
-      <entry key="S2" value="2.865923439350619E-9" />
-      <entry key="S5" value="4.3795246537775215E-4" />
-      <entry key="S10" value="0.030097442510833333" />
-      <entry key="S30" value="0.6174626473909445" />
-      <entry key="S60" value="1.3535843327355803" />
-      <entry key="M2" value="2.0830024208383886" />
-      <entry key="M5" value="5.6965056721972696" />
-      <entry key="M10" value="16.159108383560113" />
-      <entry key="M15" value="25.55255639246321" />
-      <entry key="M30" value="44.15125224068023" />
-      <entry key="H1" value="68.36698660499529" />
-      <entry key="H2" value="101.70392540303206" />
-      <entry key="H4" value="138.455085693594" />
-      <entry key="D1" value="292.77175284090254" />
-      <entry key="W1" value="483.0742535339291" />
+      <entry key="MS100" value="1.2816353582324094E-304" />
+      <entry key="MS500" value="2.104507866532184E-61" />
+      <entry key="S2" value="1.0966486105721644E-15" />
+      <entry key="S5" value="1.578694783964755E-6" />
+      <entry key="S10" value="0.00187541151407484" />
+      <entry key="S30" value="0.23933776279020136" />
+      <entry key="S60" value="0.8570492923817288" />
+      <entry key="M2" value="1.9650691701955312" />
+      <entry key="M5" value="4.937919337628216" />
+      <entry key="M10" value="9.046630179935567" />
+      <entry key="M15" value="13.319810298246578" />
+      <entry key="M30" value="26.012297429095696" />
+      <entry key="H1" value="42.28538132568489" />
+      <entry key="H2" value="56.0819270565515" />
+      <entry key="H4" value="68.04576650763804" />
+      <entry key="D1" value="228.32162541709906" />
+      <entry key="W1" value="516.5456620917832" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.8585654408678955" />
-      <entry key="MS500" value="0.9913062893535223" />
-      <entry key="S2" value="1.3746309540343682" />
-      <entry key="S5" value="1.6783105996524033" />
-      <entry key="S10" value="1.88916174176354" />
-      <entry key="S30" value="3.5148575173005785" />
-      <entry key="S60" value="5.588881212487986" />
-      <entry key="M2" value="7.772057034385816" />
-      <entry key="M5" value="18.782498743377406" />
-      <entry key="M10" value="54.38725276779961" />
-      <entry key="M15" value="88.6652535937039" />
-      <entry key="M30" value="160.90422185239336" />
-      <entry key="H1" value="264.05287639491877" />
-      <entry key="H2" value="413.95302866273397" />
-      <entry key="H4" value="580.2861160798158" />
-      <entry key="D1" value="1247.2061641133844" />
-      <entry key="W1" value="2073.456636817058" />
+      <entry key="MS100" value="0.023195725341058123" />
+      <entry key="MS500" value="0.5049535332734801" />
+      <entry key="S2" value="1.325505311830103" />
+      <entry key="S5" value="1.9816493920906133" />
+      <entry key="S10" value="2.4037926227928645" />
+      <entry key="S30" value="3.6306879400062617" />
+      <entry key="S60" value="5.572995725428128" />
+      <entry key="M2" value="9.065257624276432" />
+      <entry key="M5" value="19.569681295399565" />
+      <entry key="M10" value="35.24266107200675" />
+      <entry key="M15" value="53.21570128745773" />
+      <entry key="M30" value="110.80715670206538" />
+      <entry key="H1" value="187.08103790688818" />
+      <entry key="H2" value="252.33484828821526" />
+      <entry key="H4" value="307.51049971699786" />
+      <entry key="D1" value="994.9117799075784" />
+      <entry key="W1" value="2237.7824526869094" />
     </decayedShown>
   </component>
   <component name="OptimizeOnSaveOptions">
@@ -95,6 +95,7 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;giveaways&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;/Users/lorenz.balzereit/IdeaProjects/rw-art-community-bots&quot;,

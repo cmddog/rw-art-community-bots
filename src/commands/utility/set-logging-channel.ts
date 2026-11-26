@@ -1,12 +1,10 @@
 import {
     ChannelType,
     type ChatInputCommandInteraction,
-    MessageFlags,
-    PermissionFlagsBits,
     SlashCommandBuilder,
 } from 'discord.js';
 import { db } from '../../db/client.js';
-import { containerDisplay } from '../../utils.js';
+import { containerDisplay, verifyChannelSendPermission } from '../../utils.js';
 import { keyValue } from '../../db/schema.js';
 
 export const data = new SlashCommandBuilder()
@@ -25,21 +23,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         ChannelType.GuildText,
     ]);
 
-    if (
-        !channel
-            .permissionsFor(interaction.client.user)
-            ?.has(PermissionFlagsBits.SendMessages)
-    ) {
-        return interaction.reply(
-            containerDisplay(
-                {
-                    text: `I don't have permission to send messages in ${channel}`,
-                    color: 'error',
-                },
-                MessageFlags.Ephemeral,
-            ),
-        );
-    }
+    if (!(await verifyChannelSendPermission(interaction, channel))) return;
 
     await interaction.deferReply();
 
