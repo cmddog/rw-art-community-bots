@@ -19,8 +19,10 @@ import {
     buildContainer,
     buildTextDisplay,
     containerDisplay,
+    daysToMillis,
     deferReply,
     fireAndForget,
+    reply,
 } from '../../utils.js';
 import { giveawayContainer } from '../../giveaways.utils.js';
 import { logger } from '../../logger.js';
@@ -46,11 +48,9 @@ export async function handleStart(
         .sync()
         .map((i) => i.roleId);
 
-    await deferReply(interaction);
-
     const roles = (
         await Promise.all(
-            roleIds.map((id) => activeInteraction.guild?.roles.fetch(id)),
+            roleIds.map((id) => activeInteraction.guild?.roles.cache.get(id)),
         )
     )
         .map((role, i) => {
@@ -114,7 +114,8 @@ export async function handleStart(
         .sync();
 
     if (!giveaway) {
-        return activeInteraction.editReply(
+        return reply(
+            activeInteraction,
             containerDisplay({
                 text: 'The giveaway with that UUID no longer exists',
                 color: 'error',
@@ -123,7 +124,8 @@ export async function handleStart(
     }
 
     if (giveaway.startTime) {
-        return activeInteraction.editReply(
+        return reply(
+            activeInteraction,
             containerDisplay({
                 text: 'That giveaway has already started',
                 color: 'error',
@@ -138,7 +140,8 @@ export async function handleStart(
         .sync();
 
     if (!kv) {
-        return activeInteraction.reply(
+        return reply(
+            activeInteraction,
             containerDisplay({
                 text: 'There is no giveaway channel set. Go bother a Moderator about it',
                 color: 'error',
@@ -147,19 +150,20 @@ export async function handleStart(
     }
 
     const channel =
-        (await activeInteraction.guild?.channels
-            .fetch(kv.value)
-            .catch(() => null)) ?? null;
+        activeInteraction.guild?.channels.cache.get(kv.value) ?? null;
 
     if (!channel || !channel.isSendable()) {
-        return activeInteraction.reply(
+        return reply(
+            activeInteraction,
             containerDisplay({
                 text: "The giveaway channel couldn't be found or is invalid. Please let a Moderator know",
             }),
         );
     }
 
-    const endTime = Date.now() + 1000 * 60 * 60 * 24 * giveaway.duration;
+    const endTime = Date.now() + daysToMillis(giveaway.duration);
+
+    await deferReply(activeInteraction);
 
     const message = await channel.send({
         flags: MessageFlags.IsComponentsV2,
