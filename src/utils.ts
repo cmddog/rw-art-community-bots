@@ -2,7 +2,6 @@ import type {
     AccentColor,
     Command,
     ContainerOptions,
-    GiveawayMessageData,
     PartialMessageOptions,
 } from './types.js';
 import { db } from './db/client.js';
@@ -10,16 +9,14 @@ import { keyValue, pseudonyms } from './db/schema.js';
 import {
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle,
     type ChatInputCommandInteraction,
     ContainerBuilder,
     Guild,
     type GuildTextBasedChannel,
-    MediaGalleryBuilder,
-    type MediaGalleryItemBuilder,
+    type InteractionReplyOptions,
     MessageFlags,
     PermissionFlagsBits,
-    SectionBuilder,
+    type RepliableInteraction,
     type TextChannel,
     TextDisplayBuilder,
 } from 'discord.js';
@@ -136,86 +133,6 @@ export function fireAndForget(promise: Promise<unknown>) {
     promise.catch(console.error);
 }
 
-export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
-    const container = new ContainerBuilder();
-
-    if (data.ended) container.setAccentColor(ACCENT_COLORS.error);
-    else container.setAccentColor(0xce8100);
-
-    const title =
-        data.started && data.pingRole && !data.ended
-            ? `## <@&${data.pingRole.id}> ✦ ${data.title}`
-            : `## Giveaway${data.ended ? ' Ended' : ''} ✦ ${data.title}`;
-    if (data.started)
-        container.addTextDisplayComponents(buildTextDisplay(title));
-    else
-        container.addSectionComponents(
-            new SectionBuilder()
-                .addTextDisplayComponents(buildTextDisplay(title))
-                .setButtonAccessory(
-                    new ButtonBuilder()
-                        .setCustomId(`giveaway:${data.uuid}:start`)
-                        .setLabel('Start')
-                        .setStyle(ButtonStyle.Primary)
-                        .setEmoji({ name: '📢' }),
-                ),
-        );
-
-    if (data.description)
-        container.addTextDisplayComponents(buildTextDisplay(data.description));
-
-    if (data.imageUrls && data.imageUrls.length > 0)
-        container.addMediaGalleryComponents(
-            new MediaGalleryBuilder().addItems(
-                data.imageUrls.map(
-                    (url) => (item: MediaGalleryItemBuilder) =>
-                        item.setURL(url),
-                ),
-            ),
-        );
-
-    container.addTextDisplayComponents(
-        buildTextDisplay(
-            `**Host**: <@${data.creatorId}> ⸺ Up to **${data.numberOfWinners}** winner${data.numberOfWinners > 1 ? 's' : ''} ⸺ ${data.ended ? `Ended <t:${Math.floor(data.endTime / 1000)}:R>` : data.started ? `Ends <t:${Math.floor(data.endTime / 1000)}:R>` : `**Duration**: ${data.duration} day${data.duration > 1 ? 's' : ''}`}`,
-        ),
-    );
-
-    if (data.started)
-        container.addActionRowComponents(
-            new ActionRowBuilder<ButtonBuilder>().setComponents(
-                ...(data.ended
-                    ? []
-                    : [
-                          new ButtonBuilder()
-                              .setCustomId(`giveaway:${data.uuid}:enter`)
-                              .setEmoji({ name: '🎁' })
-                              .setStyle(ButtonStyle.Primary)
-                              .setLabel('Enter'),
-                      ]),
-                new ButtonBuilder()
-                    .setCustomId(`giveaway:${data.uuid}:entries`)
-                    .setStyle(ButtonStyle.Secondary)
-                    .setLabel(`Entries: ${data.entries}`)
-                    .setDisabled(),
-            ),
-        );
-
-    if (data.ended)
-        container
-            .addSeparatorComponents()
-            .addTextDisplayComponents(
-                buildTextDisplay(
-                    `**Winners: ${data.winners.map((id) => `<@${id}>`).join(' ')}**`,
-                ),
-            );
-
-    container.addTextDisplayComponents(
-        buildTextDisplay(`-# *UUID: ${data.uuid}*`),
-    );
-
-    return container;
-}
-
 export async function verifyChannelSendPermission(
     interaction: ChatInputCommandInteraction,
     channel: GuildTextBasedChannel | TextChannel,
@@ -237,4 +154,31 @@ export async function verifyChannelSendPermission(
         return false;
     }
     return true;
+}
+
+export function reply(
+    interaction: RepliableInteraction,
+    options: InteractionReplyOptions,
+) {
+    return interaction.reply({
+        ...options,
+        flags: options.flags
+            ? options.flags === MessageFlags.IsComponentsV2
+                ? MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+                : options.flags
+            : MessageFlags.Ephemeral,
+    });
+}
+
+export function deferReply(
+    interaction: RepliableInteraction,
+    ephemeral = true,
+) {
+    return interaction.deferReply({
+        flags: ephemeral ? MessageFlags.Ephemeral : undefined,
+    });
+}
+
+export function daysToMillis(days: number) {
+    return 1000 * 60 * 60 * 24 * days;
 }

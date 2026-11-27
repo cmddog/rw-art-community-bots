@@ -6,8 +6,8 @@ import {
     type InteractionEditReplyOptions,
     type InteractionReplyOptions,
     type MessageCreateOptions,
-    type Role,
     SlashCommandBuilder,
+    Snowflake,
 } from 'discord.js';
 
 declare module 'discord.js' {
@@ -38,8 +38,8 @@ type PartialMessageOptions = Pick<
 
 type GiveawayMessageBase = {
     title: string;
-    description: string | null;
-    imageUrls: string[] | null;
+    description: string | undefined | null;
+    imageUrls: string[] | undefined | null;
     creatorId: string;
     numberOfWinners: number;
     uuid: string;
@@ -54,10 +54,9 @@ export type GiveawayMessageData = GiveawayMessageBase &
           }
         | ({
               started: true;
-              /** Milliseconds since epoch (`Date.now()`), not seconds. */
               endTime: number;
               entries: number;
-              pingRole: APIRole | Role | null;
+              pingRoleId: Snowflake | undefined | null;
           } & (
               | {
                     ended: false;
@@ -65,3 +64,12 @@ export type GiveawayMessageData = GiveawayMessageBase &
               | { ended: true; winners: string[] }
           ))
     );
+
+export type GiveawayInput = Pick<
+    typeof giveaways.$inferInsert,
+    'title' | 'duration' | 'numberOfWinners' | 'description'
+> & {
+    attachments: Attachment[] | null;
+};
+
+export type GiveawayStatus = 'pending' | 'active' | 'ending' | 'complete';

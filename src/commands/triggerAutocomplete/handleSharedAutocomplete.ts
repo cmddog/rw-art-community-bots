@@ -11,7 +11,7 @@ export async function triggerAutocomplete(
         .select({ name: triggers.name })
         .from(triggers)
         .where(like(triggers.name, `%${focused}%`))
-        .limit(25);
+        .limit(100);
     return interaction.respond(
         results.map((r) => ({ name: r.name, value: r.name })),
     );

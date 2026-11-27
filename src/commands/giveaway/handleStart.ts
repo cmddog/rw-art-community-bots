@@ -20,8 +20,8 @@ import {
     buildTextDisplay,
     containerDisplay,
     fireAndForget,
-    giveawayContainer,
 } from '../../utils.js';
+import { giveawayContainer } from '../../giveaways.utils.js';
 
 export async function handleStart(
     interaction: ChatInputCommandInteraction | ButtonInteraction,
@@ -43,9 +43,10 @@ export async function handleStart(
         | ModalSubmitInteraction = interaction;
 
     // Make the user choose a ping role when there's multiple, automatically ping when there's only one, don't ping when there's none
-    const roleIds = (await db.query.giveawayPingRoles.findMany()).map(
-        (i) => i.roleId,
-    );
+    const roleIds = db.query.giveawayPingRoles
+        .findMany()
+        .sync()
+        .map((i) => i.roleId);
 
     const roles = (
         await Promise.all(
@@ -108,9 +109,11 @@ export async function handleStart(
 
     await activeInteraction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const giveaway = await db.query.giveaways.findFirst({
-        where: eq(giveaways.uuid, uuid),
-    });
+    const giveaway = db.query.giveaways
+        .findFirst({
+            where: eq(giveaways.uuid, uuid),
+        })
+        .sync();
 
     if (!giveaway)
         return activeInteraction.editReply(
@@ -131,9 +134,11 @@ export async function handleStart(
             ),
         );
 
-    const kv = await db.query.keyValue.findFirst({
-        where: eq(keyValue.key, 'giveawayChannelId'),
-    });
+    const kv = db.query.keyValue
+        .findFirst({
+            where: eq(keyValue.key, 'giveawayChannelId'),
+        })
+        .sync();
     if (!kv)
         return activeInteraction.editReply(
             containerDisplay({
@@ -155,6 +160,7 @@ export async function handleStart(
 
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + giveaway.duration);
+    const endTime = Date.now() + 1000 * 60 * 60 * 24 * giveaway.duration;
 
     const message = await channel.send({
         flags: MessageFlags.IsComponentsV2,
@@ -168,17 +174,23 @@ export async function handleStart(
                 creatorId: giveaway.creatorId,
                 numberOfWinners: giveaway.numberOfWinners,
                 uuid: giveaway.uuid,
-                endTime: endDate.getTime(),
+                endTime,
                 entries: 0,
-                pingRole,
+                pingRoleId: pingRole?.id,
             }),
         ],
     });
 
-    await db
-        .update(giveaways)
-        .set({ startTime: Date.now(), announcementMessageId: message.id })
-        .where(eq(giveaways.uuid, giveaway.uuid));
+    db.update(giveaways)
+        .set({
+            startTime: Date.now(),
+            endTime,
+            status: 'active',
+            announcementMessageId: message.id,
+            pingRoleId: pingRole?.id,
+        })
+        .where(eq(giveaways.uuid, giveaway.uuid))
+        .run();
 
     return activeInteraction.editReply({
         components: [

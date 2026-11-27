@@ -81,7 +81,9 @@ export const data = new SlashCommandBuilder()
     .addSubcommand((s) =>
         s
             .setName('edit')
-            .setDescription('Edit a giveaway')
+            .setDescription(
+                'Edit a giveaway. Opens a modal if run without argument, allowing more file uploads',
+            )
             .addStringOption((o) =>
                 o
                     .setName('id')
@@ -171,6 +173,6 @@ export async function autocomplete(
         ),
     });
     return interaction.respond(
-        results.map((r) => ({ name: r.title, value: r.uuid })).slice(0, 25),
+        results.map((r) => ({ name: r.title, value: r.uuid })).slice(0, 100),
     );
 }
