@@ -1,8 +1,4 @@
-import {
-    type ChatInputCommandInteraction,
-    MessageFlags,
-    SeparatorBuilder,
-} from 'discord.js';
+import { type ChatInputCommandInteraction, SeparatorBuilder } from 'discord.js';
 import { db } from '../../db/client.js';
 import { and, eq } from 'drizzle-orm';
 import { triggers, triggerSubscribers } from '../../db/schema.js';
@@ -11,55 +7,64 @@ import {
     buildTextDisplay,
     containerDisplay,
     fireAndForget,
-    log,
+    reply,
+    serverLog,
 } from '../../utils.js';
 import { nameEquals, sendUpdate } from './trigger.js';
+import { logger } from '../../logger.js';
 
 export async function handleUnsubscribe(
     interaction: ChatInputCommandInteraction,
 ): Promise<unknown> {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const name = interaction.options.getString('name', true);
 
-    const trigger = await db.query.triggers.findFirst({
-        where: nameEquals(triggers.name, name),
-    });
+    const trigger = db.query.triggers
+        .findFirst({
+            where: nameEquals(triggers.name, name),
+        })
+        .sync();
     if (!trigger) {
         return interaction.editReply(
             containerDisplay({
-                text: `The trigger ${name} doesn't exist`,
+                text: `There is no trigger called **${name}**`,
                 color: 'error',
             }),
         );
     }
 
-    const deleted = await db
+    const deleted = db
         .delete(triggerSubscribers)
         .where(
             and(
                 nameEquals(triggerSubscribers.triggerName, trigger.name),
                 eq(triggerSubscribers.userId, interaction.user.id),
             ),
-        );
+        )
+        .run();
 
-    if (deleted.changes === 0)
+    if (deleted.changes === 0) {
         return interaction.editReply(
             containerDisplay({
-                text: `You already weren't subscribed to **${trigger.name}**`,
+                text: `You aren't subscribed to **${trigger.name}**`,
             }),
         );
+    }
 
     const remaining = await db.query.triggerSubscribers.findFirst({
         where: nameEquals(triggerSubscribers.triggerName, trigger.name),
     });
 
     if (!remaining) {
-        await db
-            .delete(triggers)
-            .where(nameEquals(triggers.name, trigger.name));
+        db.delete(triggers)
+            .where(nameEquals(triggers.name, trigger.name))
+            .run();
+
+        logger.info(
+            `The trigger '${trigger.name}' lost its last subscriber and was deleted`,
+        );
 
         fireAndForget(
-            log(interaction.guild!, [
+            serverLog(interaction.guild!, [
                 buildContainer({ text: '## Trigger Deleted' })
                     .addTextDisplayComponents(
                         buildTextDisplay(
@@ -82,14 +87,16 @@ export async function handleUnsubscribe(
             ),
         );
 
-        return interaction.editReply(
+        return reply(
+            interaction,
             containerDisplay({
                 text: `Successfully unsubscribed from **${trigger.name}**. You were the last subscriber and the trigger has been deleted`,
                 color: 'primary',
             }),
         );
     } else {
-        return interaction.editReply(
+        return reply(
+            interaction,
             containerDisplay({
                 text: `Successfully unsubscribed from **${trigger.name}**`,
                 color: 'primary',

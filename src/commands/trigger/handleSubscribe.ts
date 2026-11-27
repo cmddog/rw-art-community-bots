@@ -9,7 +9,7 @@ import {
     SectionBuilder,
     TextDisplayBuilder,
 } from 'discord.js';
-import { containerDisplay } from '../../utils.js';
+import { containerDisplay, reply } from '../../utils.js';
 import { db } from '../../db/client.js';
 import { like, or } from 'drizzle-orm';
 import { triggers } from '../../db/schema.js';
@@ -28,30 +28,27 @@ export async function handleSubscribe(
     const description = interaction.options.getString('description');
 
     if (!isValidName(name)) {
-        return interaction.reply(
-            containerDisplay(
-                {
-                    text:
-                        'Name must only include letters and spaces, please try again.' +
-                        (description
-                            ? ` In case you want to copy it, here is the description you wrote: **${description}**`
-                            : ''),
-                    color: 'error',
-                },
-                MessageFlags.Ephemeral,
-            ),
+        return reply(
+            interaction,
+            containerDisplay({
+                text:
+                    'The name may only include letters and spaces, please try again.' +
+                    (description
+                        ? ` In case you want to copy it, here is the description you wrote: **${description}**`
+                        : ''),
+                color: 'error',
+            }),
         );
     }
 
-    await interaction.deferReply({
-        flags: [MessageFlags.Ephemeral],
-    });
-    const matches = await db.query.triggers.findMany({
-        where: or(
-            like(triggers.name, `%${name}%`),
-            like(triggers.description, `%${name}%`),
-        ),
-    });
+    const matches = db.query.triggers
+        .findMany({
+            where: or(
+                like(triggers.name, `%${name}%`),
+                like(triggers.description, `%${name}%`),
+            ),
+        })
+        .sync();
 
     const exactMatch = matches.find(
         (m) => m.name.toLowerCase() === name.toLowerCase(),
@@ -59,7 +56,8 @@ export async function handleSubscribe(
 
     if (matches.length === 0) {
         if (!description) {
-            return interaction.editReply(
+            return reply(
+                interaction,
                 containerDisplay({
                     text: 'You must provide a description to add a new trigger',
                     color: 'error',
@@ -67,15 +65,17 @@ export async function handleSubscribe(
             );
         }
         await insertTrigger(name, description, interaction);
-        return interaction.editReply(
+        return reply(
+            interaction,
             containerDisplay({
-                text: `Successfully added and subscribed to new trigger **${name}**`,
+                text: `Successfully added and subscribed to a new trigger: **${name}**`,
                 color: 'primary',
             }),
         );
     } else if (exactMatch) {
         if (await isSubscribed(exactMatch.name, interaction.user.id)) {
-            return interaction.editReply(
+            return reply(
+                interaction,
                 containerDisplay({
                     text: `You are already subscribed to **${exactMatch.name}**`,
                     color: 'error',
@@ -84,7 +84,8 @@ export async function handleSubscribe(
         }
 
         await subscribeToTrigger(exactMatch.name, interaction.user.id);
-        return interaction.editReply(
+        return reply(
+            interaction,
             containerDisplay({
                 text: `Successfully subscribed to **${exactMatch.name}**`,
                 color: 'primary',
@@ -154,7 +155,7 @@ export async function handleSubscribe(
                 .setCustomId('insert'),
         );
 
-        const message = await interaction.editReply({
+        const message = await reply(interaction, {
             flags: MessageFlags.IsComponentsV2,
             components: [...body, actions],
         });
@@ -176,11 +177,12 @@ export async function handleSubscribe(
                         }),
                     );
                 }
+
                 await btn.update(containerDisplay({ text: 'Inserting...' }));
                 await insertTrigger(name, description, interaction);
                 return interaction.editReply(
                     containerDisplay({
-                        text: `Successfully added new trigger **${name}**`,
+                        text: `Successfully added a new trigger: **${name}**`,
                         color: 'primary',
                     }),
                 );

@@ -46,7 +46,7 @@ export async function handleEdit(
         })
         .sync();
 
-    if (!giveaway)
+    if (!giveaway) {
         return reply(
             interaction,
             containerDisplay({
@@ -54,12 +54,13 @@ export async function handleEdit(
                 color: 'error',
             }),
         );
+    }
 
     const isMod = interaction.memberPermissions?.has(
         PermissionFlagsBits.ManageMessages,
     );
 
-    if (giveaway.status !== 'pending' && !isMod)
+    if (giveaway.status !== 'pending' && !isMod) {
         return reply(
             interaction,
             containerDisplay({
@@ -67,8 +68,9 @@ export async function handleEdit(
                 color: 'error',
             }),
         );
+    }
 
-    let replyInteraction: RepliableInteraction = interaction;
+    let activeInteraction: RepliableInteraction = interaction;
 
     if (giveaway.creatorId !== interaction.user.id) {
         if (!isMod) {
@@ -85,7 +87,7 @@ export async function handleEdit(
                 'edit',
             );
             if (!confirmInteraction) return;
-            else replyInteraction = confirmInteraction;
+            else activeInteraction = confirmInteraction;
         }
     }
 
@@ -94,28 +96,29 @@ export async function handleEdit(
 
     if (noEdits()) {
         const modalResult = await handleGiveawayModal(
-            replyInteraction,
+            activeInteraction,
             input,
             uuid,
             true,
         );
         if (!modalResult || !(modalResult instanceof ModalSubmitInteraction))
             return;
-        replyInteraction = modalResult;
+        activeInteraction = modalResult;
     }
 
-    if (noEdits())
+    if (noEdits()) {
         return reply(
-            replyInteraction,
+            activeInteraction,
             containerDisplay({ text: 'No edits were made' }),
         );
+    }
 
     if (
         input.attachments &&
         input.attachments.some((a) => !a.contentType?.startsWith('image/'))
     ) {
         return reply(
-            replyInteraction,
+            activeInteraction,
             containerDisplay({
                 text: `Only images are allowed as attachments`,
                 color: 'error',
@@ -140,8 +143,6 @@ export async function handleEdit(
         Object.entries(values).filter(([, value]) => value != null),
     ) as Partial<typeof values>;
 
-    console.log(updates);
-
     db.update(giveaways).set(updates).where(eq(giveaways.uuid, uuid)).run();
 
     const updatedGiveaway = db.query.giveaways
@@ -155,7 +156,7 @@ export async function handleEdit(
             `Updated giveaway ${uuid}, but failed to fetch it afterwards`,
         );
         return reply(
-            replyInteraction,
+            activeInteraction,
             containerDisplay({
                 text: 'Something went wrong while updating the giveaway. Tell Shiru to look at my logs',
                 color: 'error',
@@ -164,7 +165,7 @@ export async function handleEdit(
     }
 
     logger.info(
-        `Fields {${Object.keys(updates)}} updated in giveaway '${updatedGiveaway.title}' (${uuid})`,
+        `Fields {${Object.keys(updates)}} updated in giveaway '${updatedGiveaway.title}' (${uuid})${interaction.user.id !== giveaway.creatorId ? ` by ${interaction.user.username} (${interaction.user.id})` : ''}`,
     );
 
     const imageUrls = updatedGiveaway.imageUrls
@@ -175,27 +176,33 @@ export async function handleEdit(
         const kv = db.query.keyValue
             .findFirst({ where: eq(keyValue.key, 'giveawayChannelId') })
             .sync();
-        if (!kv)
+
+        if (!kv) {
             return reply(
-                replyInteraction,
+                activeInteraction,
                 containerDisplay({
                     text: 'The database entry was edited, but the giveaway announcement was not, because the giveaway channel is not set',
                     color: 'error',
                 }),
             );
-        await replyInteraction.deferReply();
+        }
+
+        await activeInteraction.deferReply();
         let message;
         try {
-            const channel = await replyInteraction.guild?.channels.fetch(
+            const channel = await activeInteraction.guild?.channels.fetch(
                 kv.value,
             );
-            if (!channel || !channel.isTextBased())
-                return replyInteraction.editReply(
+
+            if (!channel || !channel.isTextBased()) {
+                return activeInteraction.editReply(
                     containerDisplay({
                         text: "The database entry was edited, but the giveaway announcement was not, because the giveaway channel couldn't be found or doesn't support messages",
                         color: 'error',
                     }),
                 );
+            }
+
             const winners = db
                 .select({ userId: giveawayWinners.userId })
                 .from(giveawayWinners)
@@ -205,7 +212,7 @@ export async function handleEdit(
 
             const outcome =
                 updatedGiveaway.status === 'ending' ||
-                updatedGiveaway.status === 'complete'
+                updatedGiveaway.status === 'completed'
                     ? { ended: true as const, winners }
                     : { ended: false as const };
 
@@ -228,7 +235,7 @@ export async function handleEdit(
         } catch (error) {
             logger.error('Failed to update giveaway announcement: ', error);
 
-            return replyInteraction.editReply(
+            return activeInteraction.editReply(
                 containerDisplay({
                     text: 'The database entry was edited, but something went wrong while updating the giveaway announcement. Tell Shiru to look at my logs',
                     color: 'error',
@@ -236,7 +243,7 @@ export async function handleEdit(
             );
         }
 
-        return replyInteraction.editReply({
+        return activeInteraction.editReply({
             components: [
                 buildContainer({ color: 'primary' }).addSectionComponents(
                     new SectionBuilder()
@@ -257,7 +264,7 @@ export async function handleEdit(
         });
     }
 
-    return reply(replyInteraction, {
+    return reply(activeInteraction, {
         components: [
             buildContainer({
                 text: '## Giveaway successfully updated:',

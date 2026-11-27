@@ -9,6 +9,7 @@ import { containerDisplay, verifyChannelSendPermission } from '../../utils.js';
 import { db } from '../../db/client.js';
 import { giveawayPingRoles, keyValue } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { logger } from '../../logger.js';
 
 export const data = new SlashCommandBuilder()
     .setName('giveaway-mod')
@@ -72,15 +73,15 @@ async function setGiveawayChannel(interaction: ChatInputCommandInteraction) {
 
     if (!(await verifyChannelSendPermission(interaction, channel))) return;
 
-    await interaction.deferReply();
-
-    await db
-        .insert(keyValue)
+    db.insert(keyValue)
         .values({ key: 'giveawayChannelId', value: channel.id })
         .onConflictDoUpdate({
             target: keyValue.key,
             set: { value: channel.id },
-        });
+        })
+        .run();
+
+    logger.info(`Giveaway channel set to ${channel.id}`);
 
     return interaction.editReply(
         containerDisplay({
@@ -107,6 +108,10 @@ async function toggleGiveawayRole(interaction: ChatInputCommandInteraction) {
         tx.insert(giveawayPingRoles).values({ roleId: role.id }).run();
         return true;
     });
+
+    logger.info(
+        `Giveaway ping role ${role.name} (${role.id}) ${added ? 'added' : 'removed'}`,
+    );
 
     return interaction.editReply(
         containerDisplay({

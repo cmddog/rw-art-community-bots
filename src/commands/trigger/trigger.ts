@@ -14,7 +14,7 @@ import {
     containerDisplay,
     fireAndForget,
     getOrCreatePseudonym,
-    log,
+    serverLog,
 } from '../../utils.js';
 import { handleSubscribe } from './handleSubscribe.js';
 import { handleUnsubscribe } from './handleUnsubscribe.js';
@@ -22,6 +22,7 @@ import { handleList } from './handleList.js';
 import { handleHelp } from './handleHelp.js';
 import type { AccentColor } from '../../types.js';
 import { triggerAutocomplete } from '../triggerAutocomplete/handleSharedAutocomplete.js';
+import { logger } from '../../logger.js';
 
 export const data = new SlashCommandBuilder()
     .setName('trigger')
@@ -109,14 +110,17 @@ export async function insertTrigger(
     description: string,
     interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-    await db.insert(triggers).values({ name, description });
-    await db
-        .insert(triggerSubscribers)
-        .values({ triggerName: name, userId: interaction.user.id });
+    db.insert(triggers).values({ name, description }).run();
+    db.insert(triggerSubscribers)
+        .values({ triggerName: name, userId: interaction.user.id })
+        .run();
+    logger.info(
+        `User ${interaction.user.id} inserted a new trigger: '${name}'`,
+    );
 
     const pseudonym = await getOrCreatePseudonym(interaction.user.id);
     fireAndForget(
-        log(interaction.guild!, [
+        serverLog(interaction.guild!, [
             buildContainer({ color: 'primary' })
                 .addTextDisplayComponents(
                     buildTextDisplay('## Added New Trigger'),

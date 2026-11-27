@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import { db } from './db/client.js';
 import { eq } from 'drizzle-orm';
 import { keyValue } from './db/schema.js';
+import { logger } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,7 +53,7 @@ for (const folder of commandFolders) {
                 client.commands.set(command.data.name, command);
             }
         } else {
-            console.warn(
+            logger.warn(
                 `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`,
             );
         }
@@ -84,9 +85,11 @@ for (const file of eventFiles) {
 
 await client.login(process.env.DISCORD_TOKEN);
 
-const statusKv = await db.query.keyValue.findFirst({
-    where: eq(keyValue.key, 'status'),
-});
+const statusKv = db.query.keyValue
+    .findFirst({
+        where: eq(keyValue.key, 'status'),
+    })
+    .sync();
 if (statusKv)
     client.user?.setPresence({
         activities: [

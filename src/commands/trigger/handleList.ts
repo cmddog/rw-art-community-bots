@@ -13,13 +13,13 @@ import {
     buildContainer,
     buildTextDisplay,
     containerDisplay,
+    reply,
 } from '../../utils.js';
 
 export async function handleList(
     interaction: ChatInputCommandInteraction,
 ): Promise<unknown> {
     const PAGE_SIZE = 5;
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const mine = interaction.options.getBoolean('mine');
     const all = mine
@@ -39,7 +39,8 @@ export async function handleList(
         : db.select().from(triggers).orderBy(triggers.name).all();
 
     if (all.length === 0)
-        return interaction.editReply(
+        return reply(
+            interaction,
             containerDisplay({
                 text: mine
                     ? "You aren't subscribed to any triggers yet"
@@ -95,14 +96,14 @@ export async function handleList(
         return components;
     };
 
-    const reply = await interaction.editReply({
+    const message = await interaction.reply({
         components: [...buildContent(page)],
         flags: MessageFlags.IsComponentsV2,
     });
 
     if (pages <= 1) return;
 
-    const collector = reply.createMessageComponentCollector({
+    const collector = message.createMessageComponentCollector({
         time: 120_000,
         componentType: ComponentType.Button,
     });

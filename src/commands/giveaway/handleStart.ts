@@ -7,7 +7,7 @@ import {
     LabelBuilder,
     MessageFlags,
     ModalBuilder,
-    type ModalSubmitInteraction,
+    type RepliableInteraction,
     type Role,
     SectionBuilder,
     StringSelectMenuBuilder,
@@ -20,8 +20,10 @@ import {
     buildTextDisplay,
     containerDisplay,
     fireAndForget,
+    reply,
 } from '../../utils.js';
 import { giveawayContainer } from '../../giveaways.utils.js';
+import { logger } from '../../logger.js';
 
 export async function handleStart(
     interaction: ChatInputCommandInteraction | ButtonInteraction,
@@ -37,10 +39,7 @@ export async function handleStart(
         uuid = interaction.options.getString('id', true);
     }
 
-    let activeInteraction:
-        | ChatInputCommandInteraction
-        | ButtonInteraction
-        | ModalSubmitInteraction = interaction;
+    let activeInteraction: RepliableInteraction = interaction;
 
     // Make the user choose a ping role when there's multiple, automatically ping when there's only one, don't ping when there's none
     const roleIds = db.query.giveawayPingRoles
@@ -107,59 +106,62 @@ export async function handleStart(
         pingRole = roles[0]!;
     }
 
-    await activeInteraction.deferReply({ flags: MessageFlags.Ephemeral });
-
     const giveaway = db.query.giveaways
         .findFirst({
             where: eq(giveaways.uuid, uuid),
         })
         .sync();
 
-    if (!giveaway)
-        return activeInteraction.editReply(
-            containerDisplay(
-                {
-                    text: 'The giveaway with that UUID no longer exists',
-                    color: 'error',
-                },
-                MessageFlags.Ephemeral,
-            ),
+    if (!giveaway) {
+        return reply(
+            activeInteraction,
+            containerDisplay({
+                text: 'The giveaway with that UUID no longer exists',
+                color: 'error',
+            }),
         );
+    }
 
-    if (giveaway.startTime)
-        return activeInteraction.editReply(
-            containerDisplay(
-                { text: 'That giveaway has already started', color: 'error' },
-                MessageFlags.Ephemeral,
-            ),
+    if (giveaway.startTime) {
+        return reply(
+            activeInteraction,
+            containerDisplay({
+                text: 'That giveaway has already started',
+                color: 'error',
+            }),
         );
+    }
 
     const kv = db.query.keyValue
         .findFirst({
             where: eq(keyValue.key, 'giveawayChannelId'),
         })
         .sync();
-    if (!kv)
-        return activeInteraction.editReply(
+
+    if (!kv) {
+        return reply(
+            activeInteraction,
             containerDisplay({
                 text: 'There is no giveaway channel set. Go bother a Moderator about it',
                 color: 'error',
             }),
         );
+    }
+
     const channel =
         (await activeInteraction.guild?.channels
             .fetch(kv.value)
             .catch(() => null)) ?? null;
 
-    if (!channel || !channel.isSendable())
-        return activeInteraction.editReply(
+    if (!channel || !channel.isSendable()) {
+        return reply(
+            activeInteraction,
             containerDisplay({
                 text: "The giveaway channel couldn't be found or is invalid. Please let a Moderator know",
             }),
         );
+    }
 
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + giveaway.duration);
     const endTime = Date.now() + 1000 * 60 * 60 * 24 * giveaway.duration;
 
     const message = await channel.send({
@@ -183,6 +185,10 @@ export async function handleStart(
         ],
     });
 
+    logger.info(
+        `Giveaway announcement sent for ${giveaway.title} (${giveaway.uuid})`,
+    );
+
     db.update(giveaways)
         .set({
             startTime: Date.now(),
@@ -194,7 +200,9 @@ export async function handleStart(
         .where(eq(giveaways.uuid, giveaway.uuid))
         .run();
 
-    return activeInteraction.editReply({
+    logger.info(`Database status updated for ${giveaway.title}`);
+
+    return reply(activeInteraction, {
         components: [
             buildContainer({ color: 'primary' }).addSectionComponents(
                 new SectionBuilder()

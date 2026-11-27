@@ -3,7 +3,7 @@ import {
     MessageFlags,
     SeparatorBuilder,
 } from 'discord.js';
-import { buildContainer, buildTextDisplay } from '../../utils.js';
+import { buildContainer, buildTextDisplay, reply } from '../../utils.js';
 import { db } from '../../db/client.js';
 import { eq } from 'drizzle-orm';
 import { keyValue } from '../../db/schema.js';
@@ -11,15 +11,13 @@ import { keyValue } from '../../db/schema.js';
 export async function handleHelp(
     interaction: ChatInputCommandInteraction,
 ): Promise<unknown> {
-    await interaction.deferReply({
-        flags: MessageFlags.Ephemeral,
-    });
+    const updateChannelExists = db.query.keyValue
+        .findFirst({
+            where: eq(keyValue.key, 'triggerUpdateChannelId'),
+        })
+        .sync();
 
-    const updateChannelExists = await db.query.keyValue.findFirst({
-        where: eq(keyValue.key, 'triggerUpdateChannelId'),
-    });
-
-    return interaction.editReply({
+    return reply(interaction, {
         flags: MessageFlags.IsComponentsV2,
         components: [
             buildTextDisplay(

@@ -15,11 +15,13 @@ import {
     buildContainer,
     buildTextDisplay,
     containerDisplay,
+    deferReply,
     fireAndForget,
-    log,
+    serverLog,
     verifyChannelSendPermission,
 } from '../../utils.js';
 import type { AccentColor } from '../../types.js';
+import { logger } from '../../logger.js';
 
 export const data = new SlashCommandBuilder()
     .setName('say')
@@ -85,20 +87,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!(await verifyChannelSendPermission(interaction, channel))) return;
 
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await deferReply(interaction);
 
     if (replyToId) {
         try {
             await channel.messages.fetch(replyToId);
         } catch {
             return interaction.editReply(
-                containerDisplay(
-                    {
-                        text: `No message with id \`${replyToId}\` found in ${channel}`,
-                        color: 'error',
-                    },
-                    MessageFlags.Ephemeral,
-                ),
+                containerDisplay({
+                    text: `No message with id \`${replyToId}\` found in ${channel}`,
+                    color: 'error',
+                }),
             );
         }
     }
@@ -114,13 +113,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     fireAndForget(
-        log(interaction.guild!, [
+        serverLog(interaction.guild!, [
             new ContainerBuilder()
                 .addSectionComponents(
                     new SectionBuilder()
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent(
-                                '### Sent a Message as EMP',
+                                `### Sent a Message as ${process.env.BOT_INSTANCE}`,
                             ),
                         )
                         .setButtonAccessory(
@@ -136,6 +135,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
                     ),
                 ),
         ]),
+    );
+
+    logger.info(
+        `${interaction.user.username} (${interaction.user.id}) sent the following message with /say: ${content}`,
     );
 
     return interaction.editReply({

@@ -1,9 +1,10 @@
-import { type ChatInputCommandInteraction, MessageFlags } from 'discord.js';
-import { containerDisplay, fireAndForget } from '../../utils.js';
+import { type ChatInputCommandInteraction } from 'discord.js';
+import { containerDisplay, fireAndForget, reply } from '../../utils.js';
 import { db } from '../../db/client.js';
 import { and, notInArray } from 'drizzle-orm';
 import { triggers, triggerSubscribers } from '../../db/schema.js';
 import { nameEquals, sendUpdate } from '../trigger/trigger.js';
+import { logger } from '../../logger.js';
 
 export async function handleMerge(
     interaction: ChatInputCommandInteraction,
@@ -12,46 +13,52 @@ export async function handleMerge(
     const targetName = interaction.options.getString('target-name', true);
 
     if (sourceName.toLowerCase() === targetName.toLowerCase())
-        return interaction.reply(
-            containerDisplay(
-                {
-                    text: 'Source and target cannot be the same',
-                    color: 'error',
-                },
-                MessageFlags.Ephemeral,
-            ),
+        return reply(
+            interaction,
+            containerDisplay({
+                text: 'Source and target cannot be the same',
+                color: 'error',
+            }),
         );
-    await interaction.deferReply();
 
-    const source = await db.query.triggers.findFirst({
-        where: nameEquals(triggers.name, sourceName),
-    });
-    if (!source)
-        return interaction.editReply(
+    const source = db.query.triggers
+        .findFirst({
+            where: nameEquals(triggers.name, sourceName),
+        })
+        .sync();
+
+    if (!source) {
+        return reply(
+            interaction,
             containerDisplay({
                 text: `There is no trigger called **${sourceName}**`,
                 color: 'error',
             }),
         );
+    }
 
-    const target = await db.query.triggers.findFirst({
-        where: nameEquals(triggers.name, targetName),
-    });
-    if (!target)
-        return interaction.editReply(
+    const target = db.query.triggers
+        .findFirst({
+            where: nameEquals(triggers.name, targetName),
+        })
+        .sync();
+
+    if (!target) {
+        return reply(
+            interaction,
             containerDisplay({
                 text: `There is no trigger called **${targetName}**`,
                 color: 'error',
             }),
         );
+    }
 
     const targetSubs = await db.query.triggerSubscribers.findMany({
         where: nameEquals(triggerSubscribers.triggerName, target.name),
     });
     const targetUserIds = targetSubs.map((s) => s.userId);
 
-    await db
-        .update(triggerSubscribers)
+    db.update(triggerSubscribers)
         .set({ triggerName: target.name })
         .where(
             and(
@@ -60,8 +67,12 @@ export async function handleMerge(
                     ? notInArray(triggerSubscribers.userId, targetUserIds)
                     : undefined,
             ),
-        );
-    await db.delete(triggers).where(nameEquals(triggers.name, source.name));
+        )
+        .run();
+    db.delete(triggers).where(nameEquals(triggers.name, source.name)).run();
+    logger.info(
+        `${interaction.user.username} (${interaction.user.id}) Merged the trigger '${sourceName}' into '${targetName}'`,
+    );
 
     fireAndForget(
         sendUpdate(
@@ -70,7 +81,7 @@ export async function handleMerge(
         ),
     );
 
-    return interaction.editReply(
+    return interaction.reply(
         containerDisplay({
             text: `Transferred unique subscribers to **${target.name}** and deleted **${source.name}**`,
             color: 'primary',

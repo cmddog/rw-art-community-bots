@@ -1,9 +1,15 @@
-import type { GiveawayInput, GiveawayMessageData } from './types.js';
+import type {
+    GiveawayInput,
+    GiveawayMessageData,
+    PartialMessageOptions,
+} from './types.js';
 import {
     ActionRowBuilder,
     ButtonBuilder,
+    type ButtonInteraction,
     ButtonStyle,
     type ChatInputCommandInteraction,
+    ComponentType,
     ContainerBuilder,
     FileUploadBuilder,
     LabelBuilder,
@@ -12,13 +18,19 @@ import {
     MessageFlags,
     ModalBuilder,
     type ModalSubmitInteraction,
+    type RepliableInteraction,
     SectionBuilder,
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder,
     TextInputBuilder,
     TextInputStyle,
 } from 'discord.js';
-import { ACCENT_COLORS, buildTextDisplay, containerDisplay } from './utils.js';
+import {
+    ACCENT_COLORS,
+    buildTextDisplay,
+    containerDisplay,
+    fireAndForget,
+} from './utils.js';
 import { db } from './db/client.js';
 import { giveawayParticipants } from './db/schema.js';
 import { count, eq } from 'drizzle-orm';
@@ -104,7 +116,7 @@ export function giveawayContainer(data: GiveawayMessageData): ContainerBuilder {
 }
 
 export async function handleGiveawayModal(
-    interaction: ChatInputCommandInteraction,
+    interaction: Exclude<RepliableInteraction, ModalSubmitInteraction>,
     input: GiveawayInput,
     uuid: string,
     allOptional: boolean = false,
@@ -228,20 +240,21 @@ export async function handleGiveawayModal(
                     ?.map((a) => a) ?? null,
         });
 
-        if (
-            !allOptional &&
-            (isNaN(input.numberOfWinners) || input.numberOfWinners < 1)
-        )
-            return modalInteraction.reply(
-                containerDisplay(
-                    {
-                        text: 'Number of winners must be a number between 1 and 99',
-                        color: 'error',
-                    },
-                    MessageFlags.Ephemeral,
-                ),
-            );
-        else input.numberOfWinners = null;
+        const invalid =
+            isNaN(input.numberOfWinners) || input.numberOfWinners < 1;
+        if (invalid) {
+            if (allOptional) input.numberOfWinners = null;
+            else
+                return modalInteraction.reply(
+                    containerDisplay(
+                        {
+                            text: 'Number of winners must be a number between 1 and 99',
+                            color: 'error',
+                        },
+                        MessageFlags.Ephemeral,
+                    ),
+                );
+        }
 
         return modalInteraction;
     } catch {
@@ -249,41 +262,79 @@ export async function handleGiveawayModal(
     }
 }
 
-export async function showModConfirmModal(
+export async function showModConfirmButtons(
     interaction: ChatInputCommandInteraction,
     action: string,
-): Promise<ModalSubmitInteraction | undefined> {
-    const modalId = `mod-confirm:${interaction.user.id}`;
-    await interaction.showModal(
-        new ModalBuilder()
-            .setCustomId(modalId)
-            .setTitle('Confirm')
-            .addLabelComponents(
-                new LabelBuilder()
-                    .setLabel(`This Giveaway isn't yours`)
-                    .setDescription(
-                        `Are you sure you want to ${action} it? Click Submit to continue`,
+): Promise<ButtonInteraction | undefined> {
+    const messageContent = (
+        confirmed: boolean = false,
+    ): PartialMessageOptions => {
+        return {
+            components: [
+                new ContainerBuilder()
+                    .addTextDisplayComponents(
+                        buildTextDisplay(
+                            `## This giveaway isn't yours\nAre you sure you want to ${action} it? Click Confirm to continue`,
+                        ),
+                    )
+                    .addActionRowComponents(
+                        new ActionRowBuilder<ButtonBuilder>().setComponents(
+                            new ButtonBuilder()
+                                .setLabel('Cancel')
+                                .setCustomId('cancel')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setDisabled(confirmed),
+                            new ButtonBuilder()
+                                .setLabel(confirmed ? 'Confirmed' : 'Confirm')
+                                .setCustomId('confirm')
+                                .setStyle(ButtonStyle.Danger)
+                                .setDisabled(confirmed),
+                        ),
                     ),
-            ),
-    );
+            ],
+            flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+        };
+    };
 
-    try {
-        return await interaction.awaitModalSubmit({
-            time: 120_000,
-            filter: (i) =>
-                i.customId === modalId && i.user.id === interaction.user.id,
+    const message = await interaction.reply(messageContent());
+
+    return new Promise((resolve) => {
+        const collector = message.createMessageComponentCollector({
+            time: 60_000,
+            componentType: ComponentType.Button,
         });
-    } catch {
-        return;
-    }
+
+        collector.on('collect', async (i) => {
+            if (i.customId === 'confirm') {
+                await interaction.editReply(messageContent(true));
+                collector.stop('confirmed');
+                resolve(i);
+            } else {
+                await i.update(containerDisplay({ text: 'Cancelled' }));
+                collector.stop('cancelled');
+                resolve(undefined);
+            }
+        });
+
+        collector.on('end', (_, reason) => {
+            if (reason !== 'confirmed' && reason !== 'cancelled') {
+                fireAndForget(
+                    interaction.editReply(
+                        containerDisplay({ text: 'Interaction timed out' }),
+                    ),
+                );
+                resolve(undefined);
+            }
+        });
+    });
 }
 
 export function fetchEntries(uuid: string) {
     return (
         db
-            .select({ participants: count() })
+            .select({ entries: count() })
             .from(giveawayParticipants)
             .where(eq(giveawayParticipants.giveawayId, uuid))
-            .get()!.participants ?? 0
+            .get()!.entries ?? 0
     );
 }

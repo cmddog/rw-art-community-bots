@@ -13,34 +13,40 @@ import {
     buildContainer,
     containerDisplay,
     fireAndForget,
+    reply,
 } from '../../utils.js';
 import type { PartialMessageOptions } from '../../types.js';
 import { nameEquals, sendUpdate } from '../trigger/trigger.js';
 import { verifyAdminOrOther } from './trigger-mod.js';
+import { logger } from '../../logger.js';
 
 export async function handleDelete(
     interaction: ChatInputCommandInteraction,
 ): Promise<unknown> {
     if (!verifyAdminOrOther(interaction)) return;
-    await interaction.deferReply();
 
     const name = interaction.options.getString('name', true);
-    const trigger = await db.query.triggers.findFirst({
-        where: nameEquals(triggers.name, name),
-    });
+    const trigger = db.query.triggers
+        .findFirst({
+            where: nameEquals(triggers.name, name),
+        })
+        .sync();
 
-    if (!trigger)
-        return interaction.editReply(
+    if (!trigger) {
+        return reply(
+            interaction,
             containerDisplay({
-                text: `There is no trigger called ${name}`,
+                text: `There is no trigger called **${name}**`,
                 color: 'error',
             }),
         );
+    }
 
-    const [countRow] = await db
+    const [countRow] = db
         .select({ value: count() })
         .from(triggerSubscribers)
-        .where(nameEquals(triggerSubscribers.triggerName, name));
+        .where(nameEquals(triggerSubscribers.triggerName, name))
+        .all();
     const subscriberCount = countRow?.value ?? 0;
     const buildConfirmationReply: (
         confirmed: boolean,
@@ -66,7 +72,7 @@ export async function handleDelete(
         ],
         flags: MessageFlags.IsComponentsV2,
     });
-    const message = await interaction.editReply(buildConfirmationReply(false));
+    const message = await interaction.reply(buildConfirmationReply(false));
 
     const collector = message.createMessageComponentCollector({
         time: 60_000,
@@ -75,13 +81,12 @@ export async function handleDelete(
     let handled = false;
 
     collector.on('collect', async (i) => {
-        if (i.user.id !== interaction.user.id)
-            return i.reply(
-                containerDisplay(
-                    { text: 'Not your dialog', color: 'error' },
-                    MessageFlags.Ephemeral,
-                ),
+        if (i.user.id !== interaction.user.id) {
+            return reply(
+                i,
+                containerDisplay({ text: 'Not your dialog', color: 'error' }),
             );
+        }
 
         handled = true;
         if (i.customId === 'confirm') {
@@ -92,7 +97,8 @@ export async function handleDelete(
 
             if (!trigger) {
                 collector.stop();
-                return interaction.editReply(
+                return reply(
+                    interaction,
                     containerDisplay({
                         text: `The trigger **${name}** no longer exists`,
                         color: 'error',
@@ -101,6 +107,9 @@ export async function handleDelete(
             }
 
             await db.delete(triggers).where(nameEquals(triggers.name, name));
+            logger.info(
+                `${interaction.user.username} (${interaction.user.id}) deleted trigger '${trigger.name}'`,
+            );
             await i.followUp(
                 containerDisplay({
                     text: `Successfully deleted trigger **${trigger.name}**`,
@@ -126,7 +135,8 @@ export async function handleDelete(
     collector.on('end', () => {
         if (!handled) {
             fireAndForget(
-                interaction.editReply(
+                reply(
+                    interaction,
                     containerDisplay({ text: 'Interaction timed out' }),
                 ),
             );

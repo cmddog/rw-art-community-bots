@@ -6,6 +6,7 @@ import {
 import { db } from '../../db/client.js';
 import { containerDisplay, verifyChannelSendPermission } from '../../utils.js';
 import { keyValue } from '../../db/schema.js';
+import { logger } from '../../logger.js';
 
 export const data = new SlashCommandBuilder()
     .setName('set-logging-channel')
@@ -25,17 +26,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!(await verifyChannelSendPermission(interaction, channel))) return;
 
-    await interaction.deferReply();
-
-    await db
-        .insert(keyValue)
+    db.insert(keyValue)
         .values({ key: 'loggingChannelId', value: channel.id })
         .onConflictDoUpdate({
             target: keyValue.key,
             set: { value: channel.id },
-        });
+        })
+        .run();
 
-    return interaction.editReply(
+    logger.info(`Logging channel set to ${channel.id}`);
+
+    return interaction.reply(
         containerDisplay({
             text: `Logging channel set to ${channel}`,
             color: 'primary',

@@ -9,4 +9,4 @@ RUN npm ci
 
 COPY . .
 
-CMD ["sh", "-c", "npm run start:prod"]
+CMD ["sh", "-c", "npm run db:migrate && npm run start:prod"]

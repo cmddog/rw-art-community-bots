@@ -6,34 +6,41 @@ import {
     buildContainer,
     buildTextDisplay,
     fireAndForget,
-    log,
+    serverLog,
 } from '../utils.js';
 import { sendUpdate } from '../commands/trigger/trigger.js';
+import { logger } from '../logger.js';
 
 export const requiredIntents = ['GuildMembers'];
 export const name = Events.GuildMemberRemove;
 
 export async function execute(member: GuildMember) {
-    const memberSubs = await db.query.triggerSubscribers.findMany({
-        where: eq(triggerSubscribers.userId, member.id),
-    });
+    const memberSubs = db.query.triggerSubscribers
+        .findMany({
+            where: eq(triggerSubscribers.userId, member.id),
+        })
+        .sync();
 
-    await db
-        .delete(triggerSubscribers)
-        .where(eq(triggerSubscribers.userId, member.id));
+    db.delete(triggerSubscribers)
+        .where(eq(triggerSubscribers.userId, member.id))
+        .run();
 
     for (const sub of memberSubs) {
-        const remaining = await db.query.triggerSubscribers.findFirst({
-            where: eq(triggerSubscribers.triggerName, sub.triggerName),
-        });
+        const remaining = db.query.triggerSubscribers
+            .findFirst({
+                where: eq(triggerSubscribers.triggerName, sub.triggerName),
+            })
+            .sync();
         if (remaining) continue;
 
-        const trigger = await db.query.triggers.findFirst({
-            where: eq(triggers.name, sub.triggerName),
-        });
+        const trigger = db.query.triggers
+            .findFirst({
+                where: eq(triggers.name, sub.triggerName),
+            })
+            .sync();
         if (!trigger) continue;
 
-        await db.delete(triggers).where(eq(triggers.name, trigger.name));
+        db.delete(triggers).where(eq(triggers.name, trigger.name)).run();
 
         fireAndForget(
             sendUpdate(
@@ -43,8 +50,12 @@ export async function execute(member: GuildMember) {
             ),
         );
 
+        logger.info(
+            `Removed trigger '${trigger.name} due to ${member.id} leaving`,
+        );
+
         fireAndForget(
-            log(member.guild, [
+            serverLog(member.guild, [
                 buildContainer({ text: '### Trigger Deleted' })
                     .addTextDisplayComponents(
                         buildTextDisplay(

@@ -5,14 +5,15 @@ import { like } from 'drizzle-orm';
 
 export async function triggerAutocomplete(
     interaction: AutocompleteInteraction,
-): Promise<unknown> {
+): Promise<void> {
     const focused = interaction.options.getFocused();
-    const results = await db
-        .select({ name: triggers.name })
-        .from(triggers)
-        .where(like(triggers.name, `%${focused}%`))
-        .limit(100);
     return interaction.respond(
-        results.map((r) => ({ name: r.name, value: r.name })),
+        db
+            .select({ name: triggers.name })
+            .from(triggers)
+            .where(like(triggers.name, `%${focused}%`))
+            .limit(100)
+            .all()
+            .map((r) => ({ name: r.name, value: r.name })),
     );
 }

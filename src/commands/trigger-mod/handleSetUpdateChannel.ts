@@ -7,6 +7,7 @@ import { containerDisplay, verifyChannelSendPermission } from '../../utils.js';
 import { db } from '../../db/client.js';
 import { keyValue } from '../../db/schema.js';
 import { verifyAdminOrOther } from './trigger-mod.js';
+import { logger } from '../../logger.js';
 
 export async function handleSetUpdateChannel(
     interaction: ChatInputCommandInteraction,
@@ -20,10 +21,7 @@ export async function handleSetUpdateChannel(
 
     if (!(await verifyChannelSendPermission(interaction, channel))) return;
 
-    await interaction.deferReply();
-
-    await db
-        .insert(keyValue)
+    db.insert(keyValue)
         .values({
             key: 'triggerUpdateChannelId',
             value: channel.id,
@@ -31,7 +29,11 @@ export async function handleSetUpdateChannel(
         .onConflictDoUpdate({
             target: keyValue.key,
             set: { value: channel.id },
-        });
+        })
+        .run();
+    logger.info(
+        `Trigger update channel set to ${channel.name} (${channel.id})`,
+    );
 
     return interaction.editReply(
         containerDisplay({

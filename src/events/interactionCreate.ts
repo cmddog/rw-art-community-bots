@@ -4,8 +4,9 @@ import {
     type Interaction,
     MessageFlags,
 } from 'discord.js';
-import { containerDisplay, isAutocompleteCommand } from '../utils.js';
+import { containerDisplay, isAutocompleteCommand, reply } from '../utils.js';
 import { handleStart } from '../commands/giveaway/handleStart.js';
+import { logger } from '../logger.js';
 
 export const name = Events.InteractionCreate;
 
@@ -43,7 +44,7 @@ export async function execute(interaction: Interaction) {
     const command = interaction.client.commands.get(interaction.commandName);
 
     if (!command) {
-        console.error(
+        logger.error(
             `No command matching ${interaction.commandName} was found.`,
         );
         return;
@@ -72,7 +73,7 @@ export async function execute(interaction: Interaction) {
             if (isAutocompleteCommand(command)) {
                 await command.autocomplete(interaction);
             } else {
-                console.error(
+                logger.error(
                     `Missing autocomplete handler for ${interaction.commandName}`,
                 );
                 await interaction.respond([]);
@@ -92,11 +93,9 @@ async function handleGiveawayButton(interaction: ButtonInteraction) {
             return handleStart(interaction);
         }
         default:
-            return interaction.reply(
-                containerDisplay(
-                    { text: 'Unknown action', color: 'error' },
-                    MessageFlags.Ephemeral,
-                ),
+            return reply(
+                interaction,
+                containerDisplay({ text: 'Unknown action', color: 'error' }),
             );
     }
 }

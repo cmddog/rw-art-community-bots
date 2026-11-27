@@ -72,4 +72,4 @@ export type GiveawayInput = Pick<
     attachments: Attachment[] | null;
 };
 
-export type GiveawayStatus = 'pending' | 'active' | 'ending' | 'complete';
+export type GiveawayStatus = 'pending' | 'active' | 'ending' | 'completed';

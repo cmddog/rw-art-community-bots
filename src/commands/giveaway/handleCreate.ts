@@ -28,14 +28,14 @@ export async function handleCreate(
 
     const creatorId = interaction.user.id;
     const uuid = randomUUIDv7();
-    let replyInteraction: ChatInputCommandInteraction | ModalSubmitInteraction =
-        interaction;
+    let activeInteraction:
+        ChatInputCommandInteraction | ModalSubmitInteraction = interaction;
 
     if (!input.title && !input.duration && !input.numberOfWinners) {
         const modalResult = await handleGiveawayModal(interaction, input, uuid);
         if (!modalResult || !(modalResult instanceof ModalSubmitInteraction))
             return;
-        replyInteraction = modalResult;
+        activeInteraction = modalResult;
     }
 
     if (
@@ -43,7 +43,7 @@ export async function handleCreate(
         input.attachments.some((a) => !a.contentType?.startsWith('image/'))
     ) {
         return reply(
-            replyInteraction,
+            activeInteraction,
             containerDisplay({
                 text: `**Only images are allowed as attachments.**\nIf you'd like to copy them, here are the title and description you entered:\n> ## ${input.title}\n> ${input.description ?? '[ no description ]'}`,
                 color: 'error',
@@ -82,7 +82,7 @@ export async function handleCreate(
         duration: input.duration,
     });
 
-    return reply(replyInteraction, {
+    return reply(activeInteraction, {
         components: [
             buildContainer({
                 text: '# Giveaway Successfully Created',
