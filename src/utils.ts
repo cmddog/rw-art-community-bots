@@ -45,13 +45,15 @@ export function isAutocompleteCommand(
 }
 
 export async function getOrCreatePseudonym(userId: string) {
-    const existing = await db.query.pseudonyms.findFirst({
-        where: eq(pseudonyms.userId, userId),
-    });
+    const existing = db.query.pseudonyms
+        .findFirst({
+            where: eq(pseudonyms.userId, userId),
+        })
+        .sync();
 
     if (existing) return existing.pseudonym;
 
-    const all = await db.select().from(pseudonyms);
+    const all = db.select().from(pseudonyms).all();
     let pseudonym: string;
     do {
         pseudonym = uniqueNamesGenerator({
@@ -115,9 +117,11 @@ export async function serverLog(
     guild: Guild,
     components: (ContainerBuilder | ActionRowBuilder<ButtonBuilder>)[],
 ) {
-    const row = await db.query.keyValue.findFirst({
-        where: eq(keyValue.key, 'loggingChannelId'),
-    });
+    const row = db.query.keyValue
+        .findFirst({
+            where: eq(keyValue.key, 'loggingChannelId'),
+        })
+        .sync();
 
     if (!row) return;
 

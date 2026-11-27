@@ -24,7 +24,8 @@ export async function handleUnsubscribe(
         })
         .sync();
     if (!trigger) {
-        return interaction.editReply(
+        return reply(
+            interaction,
             containerDisplay({
                 text: `There is no trigger called **${name}**`,
                 color: 'error',
@@ -43,16 +44,19 @@ export async function handleUnsubscribe(
         .run();
 
     if (deleted.changes === 0) {
-        return interaction.editReply(
+        return reply(
+            interaction,
             containerDisplay({
                 text: `You aren't subscribed to **${trigger.name}**`,
             }),
         );
     }
 
-    const remaining = await db.query.triggerSubscribers.findFirst({
-        where: nameEquals(triggerSubscribers.triggerName, trigger.name),
-    });
+    const remaining = db.query.triggerSubscribers
+        .findFirst({
+            where: nameEquals(triggerSubscribers.triggerName, trigger.name),
+        })
+        .sync();
 
     if (!remaining) {
         db.delete(triggers)

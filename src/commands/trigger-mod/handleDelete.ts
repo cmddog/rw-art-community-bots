@@ -91,14 +91,15 @@ export async function handleDelete(
         handled = true;
         if (i.customId === 'confirm') {
             await i.update(buildConfirmationReply(true));
-            const trigger = await db.query.triggers.findFirst({
-                where: nameEquals(triggers.name, name),
-            });
+            const trigger = db.query.triggers
+                .findFirst({
+                    where: nameEquals(triggers.name, name),
+                })
+                .sync();
 
             if (!trigger) {
                 collector.stop();
-                return reply(
-                    interaction,
+                return interaction.editReply(
                     containerDisplay({
                         text: `The trigger **${name}** no longer exists`,
                         color: 'error',
@@ -106,7 +107,7 @@ export async function handleDelete(
                 );
             }
 
-            await db.delete(triggers).where(nameEquals(triggers.name, name));
+            db.delete(triggers).where(nameEquals(triggers.name, name)).run();
             logger.info(
                 `${interaction.user.username} (${interaction.user.id}) deleted trigger '${trigger.name}'`,
             );
@@ -135,8 +136,7 @@ export async function handleDelete(
     collector.on('end', () => {
         if (!handled) {
             fireAndForget(
-                reply(
-                    interaction,
+                interaction.editReply(
                     containerDisplay({ text: 'Interaction timed out' }),
                 ),
             );

@@ -35,7 +35,7 @@ export async function handleSetUpdateChannel(
         `Trigger update channel set to ${channel.name} (${channel.id})`,
     );
 
-    return interaction.editReply(
+    return interaction.reply(
         containerDisplay({
             text: `Trigger creation announcement channel set to ${channel}`,
             color: 'primary',

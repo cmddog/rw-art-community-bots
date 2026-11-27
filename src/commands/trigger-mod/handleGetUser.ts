@@ -12,9 +12,11 @@ export async function handleGetUser(
 
     const pseudonym = interaction.options.getString('pseudonym', true);
 
-    const row = await db.query.pseudonyms.findFirst({
-        where: eq(pseudonyms.pseudonym, pseudonym),
-    });
+    const row = db.query.pseudonyms
+        .findFirst({
+            where: eq(pseudonyms.pseudonym, pseudonym),
+        })
+        .sync();
     if (!row)
         return reply(
             interaction,

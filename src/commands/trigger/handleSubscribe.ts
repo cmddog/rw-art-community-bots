@@ -189,9 +189,11 @@ export async function handleSubscribe(
             } else if (action === 'update') {
                 await btn.update(containerDisplay({ text: 'Subscribing...' }));
 
-                const toUpdate = await db.query.triggers.findFirst({
-                    where: nameEquals(triggers.name, value!),
-                });
+                const toUpdate = db.query.triggers
+                    .findFirst({
+                        where: nameEquals(triggers.name, value!),
+                    })
+                    .sync();
                 if (!toUpdate) {
                     return interaction.editReply(
                         containerDisplay({

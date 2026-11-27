@@ -96,7 +96,7 @@ export async function handleList(
         return components;
     };
 
-    const message = await interaction.reply({
+    const message = await reply(interaction, {
         components: [...buildContent(page)],
         flags: MessageFlags.IsComponentsV2,
     });

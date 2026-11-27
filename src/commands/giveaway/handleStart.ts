@@ -19,8 +19,8 @@ import {
     buildContainer,
     buildTextDisplay,
     containerDisplay,
+    deferReply,
     fireAndForget,
-    reply,
 } from '../../utils.js';
 import { giveawayContainer } from '../../giveaways.utils.js';
 import { logger } from '../../logger.js';
@@ -33,7 +33,6 @@ export async function handleStart(
 
     if (interaction.isButton()) {
         const [, parsedUuid] = interaction.customId.split(':');
-
         uuid = parsedUuid!; // interactionCreate.ts is the only source that calls this with ButtonInteraction and already checks uuid
     } else {
         uuid = interaction.options.getString('id', true);
@@ -46,6 +45,8 @@ export async function handleStart(
         .findMany()
         .sync()
         .map((i) => i.roleId);
+
+    await deferReply(interaction);
 
     const roles = (
         await Promise.all(
@@ -113,8 +114,7 @@ export async function handleStart(
         .sync();
 
     if (!giveaway) {
-        return reply(
-            activeInteraction,
+        return activeInteraction.editReply(
             containerDisplay({
                 text: 'The giveaway with that UUID no longer exists',
                 color: 'error',
@@ -123,8 +123,7 @@ export async function handleStart(
     }
 
     if (giveaway.startTime) {
-        return reply(
-            activeInteraction,
+        return activeInteraction.editReply(
             containerDisplay({
                 text: 'That giveaway has already started',
                 color: 'error',
@@ -139,8 +138,7 @@ export async function handleStart(
         .sync();
 
     if (!kv) {
-        return reply(
-            activeInteraction,
+        return activeInteraction.reply(
             containerDisplay({
                 text: 'There is no giveaway channel set. Go bother a Moderator about it',
                 color: 'error',
@@ -154,8 +152,7 @@ export async function handleStart(
             .catch(() => null)) ?? null;
 
     if (!channel || !channel.isSendable()) {
-        return reply(
-            activeInteraction,
+        return activeInteraction.reply(
             containerDisplay({
                 text: "The giveaway channel couldn't be found or is invalid. Please let a Moderator know",
             }),
@@ -202,7 +199,7 @@ export async function handleStart(
 
     logger.info(`Database status updated for ${giveaway.title}`);
 
-    return reply(activeInteraction, {
+    return activeInteraction.editReply({
         components: [
             buildContainer({ color: 'primary' }).addSectionComponents(
                 new SectionBuilder()

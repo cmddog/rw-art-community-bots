@@ -83,7 +83,7 @@ async function setGiveawayChannel(interaction: ChatInputCommandInteraction) {
 
     logger.info(`Giveaway channel set to ${channel.id}`);
 
-    return interaction.editReply(
+    return interaction.reply(
         containerDisplay({
             text: `Giveaways will now be sent to ${channel}`,
             color: 'primary',
@@ -93,8 +93,6 @@ async function setGiveawayChannel(interaction: ChatInputCommandInteraction) {
 
 async function toggleGiveawayRole(interaction: ChatInputCommandInteraction) {
     const role = interaction.options.getRole('role', true);
-
-    await interaction.deferReply();
 
     const added = db.transaction((tx) => {
         const deleted = tx
@@ -113,7 +111,7 @@ async function toggleGiveawayRole(interaction: ChatInputCommandInteraction) {
         `Giveaway ping role ${role.name} (${role.id}) ${added ? 'added' : 'removed'}`,
     );
 
-    return interaction.editReply(
+    return interaction.reply(
         containerDisplay({
             text: added
                 ? `${role} can now be pinged for giveaways`

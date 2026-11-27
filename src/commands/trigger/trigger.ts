@@ -147,22 +147,24 @@ export async function subscribeToTrigger(
     name: string,
     userId: string,
 ): Promise<void> {
-    await db
-        .insert(triggerSubscribers)
+    db.insert(triggerSubscribers)
         .values({ triggerName: name, userId })
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .run();
 }
 
 export async function isSubscribed(
     name: string,
     userId: string,
 ): Promise<boolean> {
-    const row = await db.query.triggerSubscribers.findFirst({
-        where: and(
-            nameEquals(triggerSubscribers.triggerName, name),
-            eq(triggerSubscribers.userId, userId),
-        ),
-    });
+    const row = db.query.triggerSubscribers
+        .findFirst({
+            where: and(
+                nameEquals(triggerSubscribers.triggerName, name),
+                eq(triggerSubscribers.userId, userId),
+            ),
+        })
+        .sync();
     return row !== undefined;
 }
 
@@ -182,9 +184,11 @@ export async function sendUpdate(
     guild: Guild,
     color?: AccentColor,
 ): Promise<void> {
-    const kv = await db.query.keyValue.findFirst({
-        where: eq(keyValue.key, 'triggerUpdateChannelId'),
-    });
+    const kv = db.query.keyValue
+        .findFirst({
+            where: eq(keyValue.key, 'triggerUpdateChannelId'),
+        })
+        .sync();
 
     if (!kv) return;
 

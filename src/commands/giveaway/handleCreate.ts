@@ -31,7 +31,7 @@ export async function handleCreate(
     let activeInteraction:
         ChatInputCommandInteraction | ModalSubmitInteraction = interaction;
 
-    if (!input.title && !input.duration && !input.numberOfWinners) {
+    if (!input.title || !input.duration || !input.numberOfWinners) {
         const modalResult = await handleGiveawayModal(interaction, input, uuid);
         if (!modalResult || !(modalResult instanceof ModalSubmitInteraction))
             return;

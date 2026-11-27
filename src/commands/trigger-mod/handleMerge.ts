@@ -53,9 +53,11 @@ export async function handleMerge(
         );
     }
 
-    const targetSubs = await db.query.triggerSubscribers.findMany({
-        where: nameEquals(triggerSubscribers.triggerName, target.name),
-    });
+    const targetSubs = db.query.triggerSubscribers
+        .findMany({
+            where: nameEquals(triggerSubscribers.triggerName, target.name),
+        })
+        .sync();
     const targetUserIds = targetSubs.map((s) => s.userId);
 
     db.update(triggerSubscribers)

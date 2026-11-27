@@ -51,7 +51,7 @@ export async function execute(member: GuildMember) {
         );
 
         logger.info(
-            `Removed trigger '${trigger.name} due to ${member.id} leaving`,
+            `Removed trigger '${trigger.name}' due to ${member.id} leaving`,
         );
 
         fireAndForget(
