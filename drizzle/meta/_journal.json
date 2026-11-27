@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1793466420917,
+      "tag": "0000_graceful_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793466576275,
+      "tag": "0001_fixed_kylun",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795785112651,
+      "tag": "0002_aromatic_raza",
+      "breakpoints": true
+    }
+  ]
+}

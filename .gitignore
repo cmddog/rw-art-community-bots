@@ -1,7 +1,6 @@
 node_modules
 .env.*
 data/
-drizzle/meta/
 
 .idea/dataSources/
 .idea/dataSources.local.xml
