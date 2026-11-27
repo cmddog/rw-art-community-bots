@@ -160,19 +160,22 @@ export async function execute(
 
 export async function autocomplete(
     interaction: AutocompleteInteraction,
-): Promise<unknown> {
+): Promise<void> {
     const focused = interaction.options.getFocused();
     const userId = interaction.user.id;
-    const results = await db.query.giveaways.findMany({
-        where: and(
-            or(
-                like(giveaways.uuid, `%${focused}%`),
-                like(giveaways.title, `%${focused}%`),
-            ),
-            eq(giveaways.creatorId, userId),
-        ),
-    });
     return interaction.respond(
-        results.map((r) => ({ name: r.title, value: r.uuid })).slice(0, 100),
+        db.query.giveaways
+            .findMany({
+                where: and(
+                    or(
+                        like(giveaways.uuid, `%${focused}%`),
+                        like(giveaways.title, `%${focused}%`),
+                    ),
+                    eq(giveaways.creatorId, userId),
+                ),
+            })
+            .sync()
+            .map((r) => ({ name: r.title, value: r.uuid }))
+            .slice(0, 100),
     );
 }

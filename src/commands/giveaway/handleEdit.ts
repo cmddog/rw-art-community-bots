@@ -5,6 +5,7 @@ import {
     MessageFlags,
     ModalSubmitInteraction,
     PermissionFlagsBits,
+    type RepliableInteraction,
     SectionBuilder,
 } from 'discord.js';
 import type { GiveawayInput } from '../../types.js';
@@ -22,8 +23,9 @@ import {
     fetchEntries,
     giveawayContainer,
     handleGiveawayModal,
-    showModConfirmModal,
+    showModConfirmButtons,
 } from '../../giveaways.utils.js';
+import { logger } from '../../logger.js';
 
 export async function handleEdit(
     interaction: ChatInputCommandInteraction,
@@ -45,14 +47,12 @@ export async function handleEdit(
         .sync();
 
     if (!giveaway)
-        return interaction.reply(
-            containerDisplay(
-                {
-                    text: 'There is no giveaway with that ID',
-                    color: 'error',
-                },
-                MessageFlags.Ephemeral,
-            ),
+        return reply(
+            interaction,
+            containerDisplay({
+                text: 'There is no giveaway with that ID',
+                color: 'error',
+            }),
         );
 
     const isMod = interaction.memberPermissions?.has(
@@ -60,26 +60,27 @@ export async function handleEdit(
     );
 
     if (giveaway.status !== 'pending' && !isMod)
-        return interaction.reply(
+        return reply(
+            interaction,
             containerDisplay({
                 text: "Can't edit a giveaway that's already started. If you need to do so anyway, please ask a Moderator",
                 color: 'error',
             }),
         );
 
-    let replyInteraction: ChatInputCommandInteraction | ModalSubmitInteraction =
-        interaction;
+    let replyInteraction: RepliableInteraction = interaction;
 
     if (giveaway.creatorId !== interaction.user.id) {
         if (!isMod) {
-            return interaction.reply(
+            return reply(
+                interaction,
                 containerDisplay({
                     text: 'You can only edit your own giveaways',
                     color: 'error',
                 }),
             );
         } else {
-            const confirmInteraction = await showModConfirmModal(
+            const confirmInteraction = await showModConfirmButtons(
                 interaction,
                 'edit',
             );
@@ -93,7 +94,7 @@ export async function handleEdit(
 
     if (noEdits()) {
         const modalResult = await handleGiveawayModal(
-            interaction,
+            replyInteraction,
             input,
             uuid,
             true,
@@ -113,40 +114,62 @@ export async function handleEdit(
         input.attachments &&
         input.attachments.some((a) => !a.contentType?.startsWith('image/'))
     ) {
-        return replyInteraction.reply(
-            containerDisplay(
-                {
-                    text: `Only images are allowed as attachments`,
-                    color: 'error',
-                },
-                MessageFlags.Ephemeral,
-            ),
+        return reply(
+            replyInteraction,
+            containerDisplay({
+                text: `Only images are allowed as attachments`,
+                color: 'error',
+            }),
         );
     }
 
     const { attachments, ...fields } = input;
 
-    const values = {
+    const values: Partial<typeof giveaways.$inferInsert> = {
         ...fields,
         ...(fields.duration &&
             giveaway.status !== 'pending' && {
                 endTime: giveaway.startTime! + daysToMillis(fields.duration),
             }),
-        imageUrls: attachments ? attachments.map((a) => a.url) : null,
+        imageUrls: attachments
+            ? JSON.stringify(attachments.map((a) => a.url))
+            : null,
     };
 
     const updates = Object.fromEntries(
         Object.entries(values).filter(([, value]) => value != null),
     ) as Partial<typeof values>;
 
+    console.log(updates);
+
     db.update(giveaways).set(updates).where(eq(giveaways.uuid, uuid)).run();
 
-    const updatedGiveaway: typeof giveaways.$inferSelect = db.query.giveaways
+    const updatedGiveaway = db.query.giveaways
         .findFirst({
             where: eq(giveaways.uuid, uuid),
         })
-        .sync()!;
-    const imageUrls = updatedGiveaway.imageUrls?.split('\n') ?? null;
+        .sync();
+
+    if (!updatedGiveaway) {
+        logger.warn(
+            `Updated giveaway ${uuid}, but failed to fetch it afterwards`,
+        );
+        return reply(
+            replyInteraction,
+            containerDisplay({
+                text: 'Something went wrong while updating the giveaway. Tell Shiru to look at my logs',
+                color: 'error',
+            }),
+        );
+    }
+
+    logger.info(
+        `Fields {${Object.keys(updates)}} updated in giveaway '${updatedGiveaway.title}' (${uuid})`,
+    );
+
+    const imageUrls = updatedGiveaway.imageUrls
+        ? JSON.parse(updatedGiveaway.imageUrls)
+        : null;
 
     if (updatedGiveaway.status !== 'pending') {
         const kv = db.query.keyValue
@@ -156,7 +179,7 @@ export async function handleEdit(
             return reply(
                 replyInteraction,
                 containerDisplay({
-                    text: 'The database entry was edited, but the giveaway announcement remains untouched, because the giveaway channel is not set',
+                    text: 'The database entry was edited, but the giveaway announcement was not, because the giveaway channel is not set',
                     color: 'error',
                 }),
             );
@@ -169,7 +192,7 @@ export async function handleEdit(
             if (!channel || !channel.isTextBased())
                 return replyInteraction.editReply(
                     containerDisplay({
-                        text: "The database entry was edited, but the giveaway announcement remains untouched, because the giveaway channel couldn't be found or doesn't support messages",
+                        text: "The database entry was edited, but the giveaway announcement was not, because the giveaway channel couldn't be found or doesn't support messages",
                         color: 'error',
                     }),
                 );
@@ -203,11 +226,11 @@ export async function handleEdit(
                 flags: MessageFlags.IsComponentsV2,
             });
         } catch (error) {
-            console.error('Failed to update giveaway announcement: ', error);
+            logger.error('Failed to update giveaway announcement: ', error);
 
             return replyInteraction.editReply(
                 containerDisplay({
-                    text: 'The database entry was edited, but the giveaway announcement could not be updated',
+                    text: 'The database entry was edited, but something went wrong while updating the giveaway announcement. Tell Shiru to look at my logs',
                     color: 'error',
                 }),
             );
@@ -247,6 +270,6 @@ export async function handleEdit(
                 imageUrls,
             }),
         ],
-        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+        flags: MessageFlags.IsComponentsV2,
     });
 }

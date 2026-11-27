@@ -27,6 +27,7 @@ import {
     colors,
     uniqueNamesGenerator,
 } from 'unique-names-generator';
+import { logger } from './logger.js';
 
 export function isCommand(value: unknown): value is Command {
     return (
@@ -60,7 +61,8 @@ export async function getOrCreatePseudonym(userId: string) {
         });
     } while (all.some((row) => row.pseudonym === pseudonym));
 
-    await db.insert(pseudonyms).values({ userId, pseudonym });
+    db.insert(pseudonyms).values({ userId, pseudonym }).run();
+    logger.info(`New pseudonym "${pseudonym}" created for ${userId}`);
     return pseudonym;
 }
 
@@ -109,7 +111,7 @@ export function containerDisplay(
     return toReplyOptions([buildContainer(options)], flags);
 }
 
-export async function log(
+export async function serverLog(
     guild: Guild,
     components: (ContainerBuilder | ActionRowBuilder<ButtonBuilder>)[],
 ) {
@@ -130,7 +132,7 @@ export async function log(
 }
 
 export function fireAndForget(promise: Promise<unknown>) {
-    promise.catch(console.error);
+    promise.catch(logger.error);
 }
 
 export async function verifyChannelSendPermission(
@@ -156,26 +158,27 @@ export async function verifyChannelSendPermission(
     return true;
 }
 
+/**
+ * Shorthand for ephemerally replying to an interaction
+ */
 export function reply(
     interaction: RepliableInteraction,
     options: InteractionReplyOptions,
 ) {
     return interaction.reply({
         ...options,
-        flags: options.flags
-            ? options.flags === MessageFlags.IsComponentsV2
-                ? MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-                : options.flags
-            : MessageFlags.Ephemeral,
+        flags:
+            (typeof options.flags === 'number' ? options.flags : 0) |
+            MessageFlags.Ephemeral,
     });
 }
 
-export function deferReply(
-    interaction: RepliableInteraction,
-    ephemeral = true,
-) {
+/**
+ * Shorthand for interaction.deferReply({ flags: MessageFlags.Ephemeral })
+ */
+export function deferReply(interaction: RepliableInteraction) {
     return interaction.deferReply({
-        flags: ephemeral ? MessageFlags.Ephemeral : undefined,
+        flags: MessageFlags.Ephemeral,
     });
 }
 

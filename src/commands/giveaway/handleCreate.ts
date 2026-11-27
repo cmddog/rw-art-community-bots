@@ -6,12 +6,13 @@ import {
 import { randomUUIDv7 } from 'node:crypto';
 import { db } from '../../db/client.js';
 import { giveaways } from '../../db/schema.js';
-import { buildContainer, containerDisplay } from '../../utils.js';
+import { buildContainer, containerDisplay, reply } from '../../utils.js';
 import type { GiveawayInput } from '../../types.js';
 import {
     giveawayContainer,
     handleGiveawayModal,
 } from '../../giveaways.utils.js';
+import { logger } from '../../logger.js';
 
 export async function handleCreate(
     interaction: ChatInputCommandInteraction,
@@ -30,21 +31,19 @@ export async function handleCreate(
     let replyInteraction: ChatInputCommandInteraction | ModalSubmitInteraction =
         interaction;
 
-    if (input.title && input.duration && input.numberOfWinners) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    } else {
+    if (!input.title && !input.duration && !input.numberOfWinners) {
         const modalResult = await handleGiveawayModal(interaction, input, uuid);
         if (!modalResult || !(modalResult instanceof ModalSubmitInteraction))
             return;
         replyInteraction = modalResult;
-        await replyInteraction.deferReply({ flags: MessageFlags.Ephemeral });
     }
 
     if (
         input.attachments &&
         input.attachments.some((a) => !a.contentType?.startsWith('image/'))
     ) {
-        return replyInteraction.editReply(
+        return reply(
+            replyInteraction,
             containerDisplay({
                 text: `**Only images are allowed as attachments.**\nIf you'd like to copy them, here are the title and description you entered:\n> ## ${input.title}\n> ${input.description ?? '[ no description ]'}`,
                 color: 'error',
@@ -54,16 +53,22 @@ export async function handleCreate(
 
     const attachmentURLs = input.attachments?.map((a) => a.url) ?? null;
 
-    await db.insert(giveaways).values({
-        uuid,
-        title: input.title,
-        duration: input.duration,
-        numberOfWinners: input.numberOfWinners,
-        description: input.description,
-        imageUrls: attachmentURLs?.join('\n'),
-        creatorId,
-        creationTime: Date.now(),
-    });
+    db.insert(giveaways)
+        .values({
+            uuid,
+            title: input.title,
+            duration: input.duration,
+            numberOfWinners: input.numberOfWinners,
+            description: input.description,
+            imageUrls: attachmentURLs ? JSON.stringify(attachmentURLs) : null,
+            creatorId,
+            creationTime: Date.now(),
+        })
+        .run();
+
+    logger.info(
+        `New giveaway '${input.title}' (${uuid}) inserted by ${interaction.user.username} (${interaction.user.id})`,
+    );
 
     const giveaway = giveawayContainer({
         title: input.title,
@@ -77,7 +82,7 @@ export async function handleCreate(
         duration: input.duration,
     });
 
-    return replyInteraction.editReply({
+    return reply(replyInteraction, {
         components: [
             buildContainer({
                 text: '# Giveaway Successfully Created',

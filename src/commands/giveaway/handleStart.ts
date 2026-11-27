@@ -170,7 +170,9 @@ export async function handleStart(
                 ended: false,
                 title: giveaway.title,
                 description: giveaway.description ?? null,
-                imageUrls: giveaway.imageUrls?.split('\n') ?? null,
+                imageUrls: giveaway.imageUrls
+                    ? JSON.parse(giveaway.imageUrls)
+                    : null,
                 creatorId: giveaway.creatorId,
                 numberOfWinners: giveaway.numberOfWinners,
                 uuid: giveaway.uuid,
